@@ -68,6 +68,13 @@ def test_all_chart_legends_are_outside_the_plot_area(monkeypatch):
             assert not legend.get_window_extent(renderer).overlaps(
                 fig.axes[0].get_window_extent(renderer)
             ), name
+            decorations_bottom = fig.axes[0].get_tightbbox(renderer).y0
+            legend_top = max(
+                artist.get_window_extent(renderer).y1
+                for artist in [*legend.get_texts(), *legend.legend_handles]
+            )
+            gap_points = (decorations_bottom - legend_top) * 72 / fig.dpi
+            assert gap_points >= 14, f"{name}: legend is {gap_points:.1f}pt below the axis label"
     finally:
         for _, fig in rendered:
             analyze.plt.close(fig)

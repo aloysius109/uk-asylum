@@ -20,7 +20,7 @@ The workbook’s appeals series ends in March 2023 and is not included as a repo
 
 Count axes use comma-separated numbers below 10,000 and `K` abbreviations (with a decimal only when needed) when the axis reaches 10,000 or more. The threshold is defined by `COUNT_AXIS_K_THRESHOLD` in `scripts/analyze.py`; there is no separate chart configuration file. `_quarto.yml` configures the site and its rendering, not chart tick labels.
 
-Chart legends are placed below the plot area so they do not obscure the data.
+Chart legends are placed below the plot area so they do not obscure the data. `LEGEND_BORDER_PAD` in `scripts/analyze.py` keeps a clear gap between the legend and the x-axis label; a test checks that the gap is at least 14 points on every chart.
 
 ## Rebuild and check
 

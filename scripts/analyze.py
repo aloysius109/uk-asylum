@@ -507,11 +507,14 @@ def save_chart(fig, name):
     path.write_text("\n".join(line.rstrip() for line in svg.splitlines()) + "\n", encoding="utf-8")
 
 
+LEGEND_BORDER_PAD = 1.8
+
+
 def add_legend(fig, ax, ncol, fontsize=9):
     handles, labels = ax.get_legend_handles_labels()
     fig.legend(
         handles, labels, loc="outside lower center", ncol=ncol,
-        frameon=False, fontsize=fontsize,
+        frameon=False, fontsize=fontsize, borderpad=LEGEND_BORDER_PAD,
     )
 
 
