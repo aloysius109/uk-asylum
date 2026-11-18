@@ -52,9 +52,25 @@ The latest pending headline is **40,168 people**, or **32,401 cases**, awaiting 
 
 Tables `Asy_01a` and `Asy_01b` break claims down by age, unaccompanied asylum-seeking children (UASC), and nationality. The age and UASC series cover calendar years and also provide a separate year-ending-June comparison. The nationality table shows the larger origin groups and an “Other” category; it is not a complete list of every nationality in the detailed source data.
 
+The 20 nationalities listed individually in `Asy_01b` are compared below for the years ending June 2025 and June 2026. Pakistan was the largest individually listed nationality in the latest year, with **8,305 people**; the table groups other nationalities under “Other,” so the chart is not a full nationality ranking.
+
+![People claiming asylum by the 20 nationalities listed individually in Asy_01b, comparing the years ending June 2025 and June 2026.](assets/claims-by-nationality.svg){fig-alt="Paired horizontal bars compare asylum claims for the 20 individually listed nationalities in the two years ending June 2025 and June 2026; Pakistan is the largest group in the latest year."}
+
+The age chart shows calendar-year totals by the four published age bands. UASC are plotted as a separate line **within the child population**, not as an additional group to add to the stacked bars. The Home Office recorded **4,275 UASC claims** in the year ending June 2026; age-band totals can differ from the published total by up to seven people in this edition, reflecting small differences in the source breakdown.
+
+![Calendar-year asylum claims by age band from 2010 to 2025, with UASC shown as a subset line.](assets/claims-by-age.svg){fig-alt="Stacked bars show asylum claims by four age bands from 2010 to 2025, with a separate line for UASC as a subset of children."}
+
 Table `Asy_01c` classifies claims by route before the asylum claim, including small boats, clandestine entry, entry without relevant documentation, and visas or other leave. The route series begins in 2018. The Home Office labels this table **Official Statistics in Development**; figures, particularly for 2018 and 2019, are rounded and may be revised. Prior route describes the recorded route before claiming, not a finding about the merits of an asylum claim.
 
+The 2018–2025 chart uses the component categories rather than the “Illegal Entry Routes” subtotal, avoiding double-counting. In the year ending June 2026, the table recorded **33,949 claims by small boat** and **34,999 following visas or other leave**.
+
+![Calendar-year asylum claims by recorded route before claiming from 2018 to 2025.](assets/claims-by-route.svg){fig-alt="Stacked bars show claims by small boat, clandestine entry, entry without relevant documentation, visas or other leave, and other routes from 2018 to 2025."}
+
 Table `Asy_01d` cross-tabulates nationality with prior route for the year ending June 2026. Its categories are useful for describing the published totals, but should not be read as a measure of individual journeys or outcomes.
+
+The nationality-route chart shows the 12 largest individually listed nationalities and the all-nationalities total as shares of each group’s claims. Of **6,952 Eritrean claims**, 6,125 were recorded under small boat; for Pakistan, 7,324 of 8,305 claims were under visas and other leave. These are aggregate categories, not descriptions of every person’s journey.
+
+![Share of claims by recorded route for the 12 largest individually listed nationalities and all nationalities in the year ending June 2026.](assets/nationality-routes.svg){fig-alt="100 percent stacked bars compare the recorded route mix for 12 nationalities and all nationalities in the year ending June 2026."}
 
 ## Decisions and outcomes
 

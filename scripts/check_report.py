@@ -34,6 +34,7 @@ def main():
     returns_and_stock = headlines["returns_and_stock"]
     small_boat = headlines["small_boat_case_grant_rates"]
     hotel = headlines["hotel_accommodation"]
+    who_claims = headlines["who_claims"]
 
     require(annual["people_claiming_asylum"] == 101911, "Calendar 2025 claims changed from the report headline.")
     require(round(annual["published_initial_grant_rate_main_applicants"] * 100, 1) == 42.1,
@@ -62,6 +63,14 @@ def main():
             and hotel["largest_region_latest"] == "London"
             and hotel["largest_region_latest_people"] == 5487,
             "The quarterly hotel or regional accommodation figures changed.")
+    require(who_claims["top_nationality"] == "Pakistan"
+            and who_claims["top_nationality_people"] == 8305
+            and who_claims["uasc_people"] == 4275
+            and who_claims["small_boat_people"] == 33949
+            and round(who_claims["small_boat_share"] * 100, 1) == 39.5
+            and who_claims["visas_and_other_leave_people"] == 34999
+            and round(who_claims["visas_and_other_leave_share"] * 100, 1) == 40.7,
+            "The Who claims asylum headline figures changed.")
 
     claims = [
         "101,911", "42.1%", "38.1%", "40,168", "32,401", "85,891", "115,872",
@@ -69,6 +78,9 @@ def main():
         "16,021", "12,568", "3,841", "8,727", "9,009", "Official Statistics in Development",
         "16,265 withdrawals", "grants plus refusals", "administrative outcomes",
         "otherwise closed", "COUNT_AXIS_K_THRESHOLD", "Chart legends sit below the plot area",
+        "8,305 people", "4,275 UASC claims", "33,949 claims by small boat",
+        "34,999 following visas or other leave", "6,125 were recorded under small boat",
+        "7,324 of 8,305 claims", "by up to seven people", "avoiding double-counting",
         "17,233", "19,079", "3,157", "12,568", "224,742", "Monthly counts are not published",
         "latest seven quarters are provisional", "refused entry at port", "main-applicant cases",
         "56,018 people in September 2023", "Section 98 line is a separate historical category",
@@ -106,6 +118,7 @@ def main():
         require((ROOT / link).is_file(), f"Download target does not exist: {link}")
 
     for chart in [
+        "claims-by-nationality.svg", "claims-by-age.svg", "claims-by-route.svg", "nationality-routes.svg",
         "annual-claims-decisions.svg", "initial-grant-rates.svg", "small-boat-grant-rates.svg",
         "waiting-times.svg", "asylum-support.svg", "quarterly-flows-returns.svg", "stock-vs-returns.svg",
         "hotel-accommodation.svg", "hotel-by-region.svg",
@@ -113,7 +126,7 @@ def main():
         require((ROOT / "assets" / chart).is_file(), f"Expected report chart is missing: {chart}")
         require(f"assets/{chart}" in report, f"Report does not reference its chart: {chart}")
 
-    print("Report QA passed: pinned figures, unit distinctions, nine charts and twelve downloads are consistent.")
+    print("Report QA passed: pinned figures, unit distinctions, thirteen charts and twelve downloads are consistent.")
 
 
 if __name__ == "__main__":

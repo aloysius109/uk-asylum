@@ -55,6 +55,7 @@ GOLD = "#d68d38"
 MUTED = "#65767a"
 GRID = "#e2e9e4"
 COUNT_AXIS_K_THRESHOLD = 10_000
+AGE_BAND_TOLERANCE = 7
 
 
 def header_text(value):
@@ -153,6 +154,22 @@ def value_for(table, label, column):
     if column not in row["values"]:
         raise ValueError(f"Missing column '{column}' for '{label}'.")
     return row["values"][column]
+
+
+def age_group_rows(table, group):
+    group_labels = {
+        "Total people", "Main applicants", "Unaccompanied asylum-seeking children (UASC)",
+    }
+    rows = table["rows"]
+    start = next((index for index, row in enumerate(rows) if row["label"] == group), None)
+    if start is None:
+        raise ValueError(f"Missing age group '{group}' in Asy_01a.")
+    end = next(
+        (index for index in range(start + 1, len(rows))
+         if rows[index]["label"] in group_labels or rows[index]["label"] == "UASC as a % of all claimants"),
+        len(rows),
+    )
+    return {row["label"]: row for row in rows[start:end]}
 
 
 def optional_value(table, label, column):
@@ -377,6 +394,44 @@ def validate_tables(tables):
     if value_for(nationality_routes, "Total", "Small Boat") != value_for(boats, "Small Boat", latest):
         raise ValueError("Asy_01c and Asy_01d small-boat totals do not reconcile for June 2026.")
 
+    claims_columns = [*years, "Year ending June 2025", latest]
+    age_table = tables["Asy_01a"]
+    age_rows = age_group_rows(age_table, "Total people")
+    age_categories = ["13 and under", "14 to 15", "16 to 17", "18 and over"]
+    for column in claims_columns:
+        age_total = numeric(age_rows["Total people"]["values"][column], f"total people in {column}")
+        age_sum = sum(numeric(age_rows[label]["values"][column], f"{label} in {column}")
+                      for label in age_categories)
+        if abs(age_total - age_sum) > AGE_BAND_TOLERANCE:
+            raise ValueError(f"Asy_01a age bands do not reconcile to total people in {column}.")
+
+    nationality_table = tables["Asy_01b"]
+    nationality_labels = [row["label"] for row in nationality_table["rows"]
+                          if row["label"] not in {"Other", "Total"}]
+    for column in claims_columns:
+        nationality_sum = sum(numeric(value_for(nationality_table, label, column),
+                                      f"{label} claims in {column}")
+                              for label in [*nationality_labels, "Other"])
+        if nationality_sum != value_for(nationality_table, "Total", column):
+            raise ValueError(f"Asy_01b nationality rows do not reconcile in {column}.")
+
+    route_categories = [
+        "Small Boat", "Clandestine", "Entered Without Relevant Documentation",
+        "Visas and Other Leave", "Other",
+    ]
+    route_periods = [*[str(year) for year in range(2018, 2026)], "Year ending June 2025", latest]
+    for column in route_periods:
+        route_sum = sum(numeric(value_for(boats, label, column), f"{label} claims in {column}")
+                        for label in route_categories)
+        if route_sum != value_for(boats, "Total", column):
+            raise ValueError(f"Asy_01c route categories do not reconcile in {column}.")
+
+    for row in nationality_routes["rows"]:
+        route_sum = sum(numeric(row["values"][label], f"{label} for {row['label']}")
+                        for label in route_categories)
+        if route_sum != row["values"]["Total"]:
+            raise ValueError(f"Asy_01d route categories do not reconcile for {row['label']}.")
+
     small_boat_rates = tables["Asy_02d"]
     for label in ("Grant rate - year ending June 2025 (cases)", "Grant rate - year ending June 2026 (cases)"):
         total = numeric(value_for(small_boat_rates, "All nationalities", label), label)
@@ -433,6 +488,17 @@ def latest_summary(tables):
 
 def make_headlines(metadata, tables, quarterly, work_in_progress, support):
     small_boat = tables["Asy_02d"]
+    nationality_table = tables["Asy_01b"]
+    nationality_latest = "Year ending June 2026"
+    top_nationality = max(
+        (row for row in nationality_table["rows"] if row["label"] not in {"Other", "Total"}),
+        key=lambda row: row["values"][nationality_latest],
+    )
+    age_table = tables["Asy_01a"]
+    route_table = tables["Asy_01c"]
+    route_total = value_for(route_table, "Total", nationality_latest)
+    small_boat_people = value_for(route_table, "Small Boat", nationality_latest)
+    visa_people = value_for(route_table, "Visas and Other Leave", nationality_latest)
     quarter_flows = quarterly_flows_with_rolling_returns(quarterly)
     latest_quarter = quarter_flows.iloc[-1]
     latest_work_in_progress = work_in_progress.iloc[-1]
@@ -454,6 +520,15 @@ def make_headlines(metadata, tables, quarterly, work_in_progress, support):
         "small_boat_case_grant_rates": {
             "year_ending_june_2025": value_for(small_boat, "All nationalities", "Grant rate - year ending June 2025 (cases)"),
             "year_ending_june_2026": value_for(small_boat, "All nationalities", "Grant rate - year ending June 2026 (cases)"),
+        },
+        "who_claims": {
+            "top_nationality": top_nationality["label"],
+            "top_nationality_people": top_nationality["values"][nationality_latest],
+            "uasc_people": value_for(age_table, "Unaccompanied asylum-seeking children (UASC)", nationality_latest),
+            "small_boat_people": small_boat_people,
+            "small_boat_share": small_boat_people / route_total,
+            "visas_and_other_leave_people": visa_people,
+            "visas_and_other_leave_share": visa_people / route_total,
         },
         "returns_and_stock": {
             "latest_quarter": latest_quarter["quarter"],
@@ -516,6 +591,127 @@ def add_legend(fig, ax, ncol, fontsize=9):
         handles, labels, loc="outside lower center", ncol=ncol,
         frameon=False, fontsize=fontsize, borderpad=LEGEND_BORDER_PAD,
     )
+
+
+def chart_claims_by_nationality(tables):
+    table = tables["Asy_01b"]
+    prior_column = "Year ending June 2025"
+    latest_column = "Year ending June 2026"
+    rows = [row for row in table["rows"] if row["label"] not in {"Other", "Total"}]
+    rows = sorted(rows, key=lambda row: row["values"][latest_column], reverse=True)[:20]
+    rows.sort(key=lambda row: row["values"][latest_column])
+    labels = [row["label"] for row in rows]
+    prior = [row["values"][prior_column] for row in rows]
+    latest = [row["values"][latest_column] for row in rows]
+    fig, ax = plt.subplots(figsize=(10.5, 7.8), layout="constrained")
+    positions = list(range(len(labels)))
+    ax.barh([position + .17 for position in positions], prior, height=.32,
+            color="#b9c9bf", label="Year ending June 2025")
+    ax.barh([position - .17 for position in positions], latest, height=.32,
+            color=TEAL, label="Year ending June 2026")
+    ax.set_yticks(positions, labels)
+    ax.set_xlim(left=0)
+    ax.set_xlabel("People claiming asylum", color=MUTED)
+    format_count_axis(ax.xaxis, max([*prior, *latest]))
+    ax.set_title("Claims by nationality", loc="left", color=INK, fontsize=15, pad=14)
+    ax.grid(axis="x", color=GRID, linewidth=.8)
+    ax.yaxis.grid(False)
+    ax.spines[["top", "right", "left", "bottom"]].set_visible(False)
+    ax.tick_params(axis="both", colors=MUTED, labelsize=8.5, length=0, pad=6)
+    add_legend(fig, ax, ncol=2)
+    save_chart(fig, "claims-by-nationality")
+
+
+def chart_claims_by_age(tables):
+    table = tables["Asy_01a"]
+    age_rows = age_group_rows(table, "Total people")
+    years = list(range(2010, 2026))
+    categories = ["13 and under", "14 to 15", "16 to 17", "18 and over"]
+    colors = ["#80a99b", GOLD, PURPLE, TEAL]
+    positions = list(range(len(years)))
+    fig, ax = plt.subplots(figsize=(10.5, 5), layout="constrained")
+    bottom = [0] * len(years)
+    for label, color in zip(categories, colors):
+        values = [age_rows[label]["values"][str(year)] for year in years]
+        ax.bar(positions, values, bottom=bottom, color=color, width=.72, label=label)
+        bottom = [current + value for current, value in zip(bottom, values)]
+    uasc = [value_for(table, "Unaccompanied asylum-seeking children (UASC)", str(year))
+            for year in years]
+    ax.plot(positions, uasc, color="#b95f4b", linewidth=2.2, marker="o", markersize=3.5,
+            label="UASC (subset of children)")
+    ax.set_xticks(positions, [str(year) for year in years])
+    ax.set_xlim(-.6, len(years) - .4)
+    ax.set_ylim(bottom=0)
+    ax.set_ylabel("People claiming asylum", color=MUTED)
+    format_count_axis(ax.yaxis, max(bottom))
+    ax.set_title("Age profile of asylum claims", loc="left", color=INK, fontsize=15, pad=14)
+    style_axis(ax)
+    add_legend(fig, ax, ncol=3, fontsize=8.5)
+    save_chart(fig, "claims-by-age")
+
+
+def chart_claims_by_route(tables):
+    table = tables["Asy_01c"]
+    years = list(range(2018, 2026))
+    categories = [
+        ("Small Boat", TEAL, "Small boat"),
+        ("Clandestine", GOLD, "Clandestine"),
+        ("Entered Without Relevant Documentation", PURPLE, "No relevant documentation"),
+        ("Visas and Other Leave", "#80a99b", "Visas / other leave"),
+        ("Other", MUTED, "Other"),
+    ]
+    positions = list(range(len(years)))
+    fig, ax = plt.subplots(figsize=(10.5, 5), layout="constrained")
+    bottom = [0] * len(years)
+    for label, color, legend_label in categories:
+        values = [value_for(table, label, str(year)) for year in years]
+        ax.bar(positions, values, bottom=bottom, color=color, width=.7, label=legend_label)
+        bottom = [current + value for current, value in zip(bottom, values)]
+    ax.set_xticks(positions, [str(year) for year in years])
+    ax.set_xlim(-.6, len(years) - .4)
+    ax.set_ylim(bottom=0)
+    ax.set_ylabel("People claiming asylum", color=MUTED)
+    format_count_axis(ax.yaxis, max(bottom))
+    ax.set_title("Claims by route before claiming", loc="left", color=INK, fontsize=15, pad=14)
+    style_axis(ax)
+    add_legend(fig, ax, ncol=3, fontsize=8.5)
+    save_chart(fig, "claims-by-route")
+
+
+def chart_nationality_routes(tables):
+    table = tables["Asy_01d"]
+    route_columns = [
+        ("Small Boat", TEAL, "Small boat"),
+        ("Clandestine", GOLD, "Clandestine"),
+        ("Entered Without Relevant Documentation", PURPLE, "No relevant documentation"),
+        ("Visas and Other Leave", "#80a99b", "Visas / other leave"),
+        ("Other", MUTED, "Other"),
+    ]
+    nationalities = [row for row in table["rows"] if row["label"] not in {"Other", "Total"}]
+    top_nationalities = sorted(nationalities, key=lambda row: row["values"]["Total"], reverse=True)[:12]
+    top_nationalities.sort(key=lambda row: row["values"]["Total"])
+    all_nationalities = dict(row_for(table, "Total"), label="All nationalities")
+    rows = [all_nationalities, *top_nationalities]
+    labels = [row["label"] for row in rows]
+    totals = [row["values"]["Total"] for row in rows]
+    fig, ax = plt.subplots(figsize=(10.8, 6.7), layout="constrained")
+    positions = list(range(len(labels)))
+    left = [0.0] * len(labels)
+    for column, color, legend_label in route_columns:
+        values = [row["values"][column] / total for row, total in zip(rows, totals)]
+        ax.barh(positions, values, left=left, color=color, height=.68, label=legend_label)
+        left = [current + value for current, value in zip(left, values)]
+    ax.set_yticks(positions, labels)
+    ax.set_xlim(0, 1)
+    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda value, _: f"{value:.0%}"))
+    ax.set_xlabel("Share of claims", color=MUTED)
+    ax.set_title("Prior route by nationality", loc="left", color=INK, fontsize=15, pad=14)
+    ax.grid(axis="x", color=GRID, linewidth=.8)
+    ax.yaxis.grid(False)
+    ax.spines[["top", "right", "left", "bottom"]].set_visible(False)
+    ax.tick_params(axis="both", colors=MUTED, labelsize=8.5, length=0, pad=6)
+    add_legend(fig, ax, ncol=3, fontsize=8.5)
+    save_chart(fig, "nationality-routes")
 
 
 def chart_annual_flows(tables):
@@ -780,6 +976,10 @@ def write_outputs(metadata, tables, quarterly, work_in_progress, support):
     hotel_region_breakdown(support).to_csv(
         DERIVED / "hotel-by-region.csv", index=False, lineterminator="\n", na_rep=""
     )
+    chart_claims_by_nationality(tables)
+    chart_claims_by_age(tables)
+    chart_claims_by_route(tables)
+    chart_nationality_routes(tables)
     chart_annual_flows(tables)
     chart_grant_rates(tables)
     chart_small_boat_rates(tables)

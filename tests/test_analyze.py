@@ -9,6 +9,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import analyze  # noqa: E402
 from analyze import (
     SHEETS,
+    age_group_rows,
     cell_value,
     format_count,
     hotel_region_breakdown,
@@ -48,6 +49,10 @@ def test_all_chart_legends_are_outside_the_plot_area(monkeypatch):
 
     try:
         analyze.chart_annual_flows(tables)
+        analyze.chart_claims_by_nationality(tables)
+        analyze.chart_claims_by_age(tables)
+        analyze.chart_claims_by_route(tables)
+        analyze.chart_nationality_routes(tables)
         analyze.chart_small_boat_rates(tables)
         analyze.chart_waiting_times(tables)
         analyze.chart_hotel_accommodation(support)
@@ -56,6 +61,7 @@ def test_all_chart_legends_are_outside_the_plot_area(monkeypatch):
         analyze.chart_stock_and_returns(quarterly, work_in_progress)
 
         assert {name for name, _ in rendered} == {
+            "claims-by-nationality", "claims-by-age", "claims-by-route", "nationality-routes",
             "annual-claims-decisions", "small-boat-grant-rates", "waiting-times",
             "hotel-accommodation", "hotel-by-region", "quarterly-flows-returns", "stock-vs-returns",
         }
@@ -78,6 +84,15 @@ def test_all_chart_legends_are_outside_the_plot_area(monkeypatch):
     finally:
         for _, fig in rendered:
             analyze.plt.close(fig)
+
+
+def test_who_claims_age_groups_and_routes_use_the_correct_rows():
+    _, tables = load_tables()
+    uasc = age_group_rows(tables["Asy_01a"], "Unaccompanied asylum-seeking children (UASC)")
+    assert uasc["Unaccompanied asylum-seeking children (UASC)"]["values"]["Year ending June 2026"] == 4275
+    assert uasc["18 and over"]["values"]["Year ending June 2026"] is None
+    assert value_for(tables["Asy_01d"], "Pakistan", "Visas and Other Leave") == 7324
+    assert value_for(tables["Asy_01d"], "Eritrea", "Small Boat") == 6125
 
 
 def test_suppressed_quarterly_source_markers_remain_missing():
