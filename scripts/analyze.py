@@ -432,6 +432,60 @@ def validate_tables(tables):
         if route_sum != row["values"]["Total"]:
             raise ValueError(f"Asy_01d route categories do not reconcile for {row['label']}.")
 
+    periods = [*years, "Year ending June 2025", latest]
+    grant_table = tables["Asy_02a"]
+    grant_components = [
+        "Refugee Permission", "Temporary Refugee Permission", "Humanitarian Protection",
+        "Discretionary Leave", "UASC Leave", "Other Grants",
+    ]
+    for column in periods:
+        grants = sum(
+            0 if value_for(grant_table, label, column) is None
+            else numeric(value_for(grant_table, label, column), f"{label} grants in {column}")
+            for label in grant_components
+        )
+        published_grants = numeric(
+            value_for(grant_table, "Asylum-related grants", column), f"Asylum-related grants in {column}"
+        )
+        resettlement = numeric(
+            value_for(grant_table, "Resettlement arrivals", column), f"Resettlement arrivals in {column}"
+        )
+        total = numeric(value_for(grant_table, "Total", column), f"total grants and arrivals in {column}")
+        expected_difference = -1 if column == "2024" else 0
+        if grants != published_grants or grants + resettlement - total != expected_difference:
+            raise ValueError(f"Asy_02a grant components do not reconcile in {column}.")
+
+    children_table = tables["Asy_02b"]
+    for column in periods:
+        children_decisions = numeric(
+            value_for(children_table, "Children receiving initial decisions", column),
+            f"children decisions in {column}",
+        )
+        children_outcomes = sum(
+            numeric(value_for(children_table, label, column), f"{label} in {column}")
+            for label in ("Children granted", "Children refused")
+        )
+        uasc_decisions = numeric(
+            value_for(children_table, "UASC receiving initial decisions", column), f"UASC decisions in {column}"
+        )
+        uasc_grants = numeric(value_for(children_table, "UASC granted", column), f"UASC grants in {column}")
+        uasc_refusals = numeric(value_for(children_table, "UASC refused", column), f"UASC refusals in {column}")
+        uasc_rate = numeric(value_for(children_table, "UASC grant rate", column), f"UASC grant rate in {column}")
+        if children_outcomes != children_decisions or uasc_grants + uasc_refusals != uasc_decisions:
+            raise ValueError(f"Asy_02b decision outcomes do not reconcile in {column}.")
+        if not math.isclose(uasc_rate, uasc_grants / uasc_decisions, rel_tol=1e-12):
+            raise ValueError(f"Asy_02b UASC grant rate does not match substantive decisions in {column}.")
+
+    assessments = tables["Asy_05"]
+    for column in periods:
+        closed = numeric(value_for(assessments, "Closed", column), f"closed age assessments in {column}")
+        age_results = sum(
+            numeric(value_for(assessments, label, column), f"{label} assessments in {column}")
+            for label in ("17 and under", "18 and over")
+        )
+        if closed != age_results:
+            raise ValueError(f"Asy_05 age-assessment results do not reconcile in {column}.")
+
     small_boat_rates = tables["Asy_02d"]
     for label in ("Grant rate - year ending June 2025 (cases)", "Grant rate - year ending June 2026 (cases)"):
         total = numeric(value_for(small_boat_rates, "All nationalities", label), label)
@@ -508,6 +562,12 @@ def make_headlines(metadata, tables, quarterly, work_in_progress, support):
     latest_hotel = hotel_series.iloc[-1]
     latest_regions = hotel_region_breakdown(support).loc[lambda data: data["quarter"] == latest_hotel["quarter"]]
     largest_region = latest_regions.loc[latest_regions["people"].idxmax()]
+    latest = "Year ending June 2026"
+    decisions = quarterly.tail(4)
+    decision_table = tables["Asy_00a"]
+    grant_types = tables["Asy_02a"]
+    children_table = tables["Asy_02b"]
+    assessments = tables["Asy_05"]
     return {
         "source": metadata,
         "release": "Year ending June 2026",
@@ -529,6 +589,31 @@ def make_headlines(metadata, tables, quarterly, work_in_progress, support):
             "small_boat_share": small_boat_people / route_total,
             "visas_and_other_leave_people": visa_people,
             "visas_and_other_leave_share": visa_people / route_total,
+        },
+        "decisions": {
+            "claims": int(decisions["claims"].sum()),
+            "substantive_decisions": int(decisions["substantive_decisions"].sum()),
+            "grants": int(decisions["grants"].sum()),
+            "refusals": int(decisions["refusals"].sum()),
+            "withdrawals": int(decisions["withdrawals"].sum()),
+            "administrative_outcomes": int(decisions["admin_outcomes"].sum()),
+            "asylum_related_grants": value_for(grant_types, "Asylum-related grants", latest),
+            "resettlement_arrivals": value_for(grant_types, "Resettlement arrivals", latest),
+            "total_grants_and_arrivals": value_for(grant_types, "Total", latest),
+            "published_initial_decisions": value_for(decision_table, "People receiving initial decisions", latest),
+        },
+        "children": {
+            "children_decisions": value_for(children_table, "Children receiving initial decisions", latest),
+            "children_granted": value_for(children_table, "Children granted", latest),
+            "children_refused": value_for(children_table, "Children refused", latest),
+            "uasc_decisions": value_for(children_table, "UASC receiving initial decisions", latest),
+            "uasc_granted": value_for(children_table, "UASC granted", latest),
+            "uasc_refused": value_for(children_table, "UASC refused", latest),
+            "uasc_grant_rate": value_for(children_table, "UASC grant rate", latest),
+            "age_assessments_raised": value_for(assessments, "Raised", latest),
+            "age_assessments_closed": value_for(assessments, "Closed", latest),
+            "age_assessments_17_and_under": value_for(assessments, "17 and under", latest),
+            "age_assessments_18_and_over": value_for(assessments, "18 and over", latest),
         },
         "returns_and_stock": {
             "latest_quarter": latest_quarter["quarter"],
@@ -712,6 +797,109 @@ def chart_nationality_routes(tables):
     ax.tick_params(axis="both", colors=MUTED, labelsize=8.5, length=0, pad=6)
     add_legend(fig, ax, ncol=3, fontsize=8.5)
     save_chart(fig, "nationality-routes")
+
+
+def chart_grant_types(tables):
+    table = tables["Asy_02a"]
+    years = list(range(2010, 2026))
+    categories = [
+        ("Refugee Permission", TEAL, "Refugee permission"),
+        ("Temporary Refugee Permission", "#80a99b", "Temporary refugee permission"),
+        ("Humanitarian Protection", PURPLE, "Humanitarian protection"),
+        ("Discretionary Leave", GOLD, "Discretionary leave"),
+        ("UASC Leave", "#b95f4b", "UASC leave"),
+        ("Other Grants", MUTED, "Other grants"),
+    ]
+    positions = list(range(len(years)))
+    fig, ax = plt.subplots(figsize=(11, 5.2), layout="constrained")
+    bottom = [0] * len(years)
+    for label, color, legend_label in categories:
+        values = [value_for(table, label, str(year)) or 0 for year in years]
+        ax.bar(positions, values, bottom=bottom, color=color, width=.72, label=legend_label)
+        bottom = [current + value for current, value in zip(bottom, values)]
+    resettlement = [value_for(table, "Resettlement arrivals", str(year)) for year in years]
+    ax.plot(positions, resettlement, color=INK, linewidth=1.8, marker="o", markersize=3,
+            linestyle="--", label="Resettlement arrivals (not a decision)")
+    ax.set_xticks(positions, [str(year) for year in years])
+    ax.set_xlim(-.6, len(years) - .4)
+    ax.set_ylim(bottom=0)
+    ax.set_ylabel("People", color=MUTED)
+    format_count_axis(ax.yaxis, max(max(bottom), max(resettlement)))
+    ax.set_title("Asylum-related grants by type", loc="left", color=INK, fontsize=15, pad=14)
+    style_axis(ax)
+    add_legend(fig, ax, ncol=4, fontsize=8)
+    save_chart(fig, "grant-types")
+
+
+def chart_children_decisions(tables):
+    table = tables["Asy_02b"]
+    years = list(range(2010, 2026))
+    granted = [value_for(table, "Children granted", str(year)) for year in years]
+    refused = [value_for(table, "Children refused", str(year)) for year in years]
+    uasc = [value_for(table, "UASC receiving initial decisions", str(year)) for year in years]
+    positions = list(range(len(years)))
+    fig, ax = plt.subplots(figsize=(10.5, 5), layout="constrained")
+    ax.bar(positions, granted, color=TEAL, width=.72, label="Children granted")
+    ax.bar(positions, refused, bottom=granted, color=GOLD, width=.72, label="Children refused")
+    ax.plot(positions, uasc, color="#b95f4b", linewidth=2.2, marker="o", markersize=3.5,
+            label="UASC decisions (subset)")
+    totals = [grant + refusal for grant, refusal in zip(granted, refused)]
+    ax.set_xticks(positions, [str(year) for year in years])
+    ax.set_xlim(-.6, len(years) - .4)
+    ax.set_ylim(bottom=0)
+    ax.set_ylabel("People receiving initial decisions", color=MUTED)
+    format_count_axis(ax.yaxis, max(totals))
+    ax.set_title("Initial decisions involving children", loc="left", color=INK, fontsize=15, pad=14)
+    style_axis(ax)
+    add_legend(fig, ax, ncol=3, fontsize=8.5)
+    save_chart(fig, "children-decisions")
+
+
+def chart_uasc_grant_rate(tables):
+    uasc_table = tables["Asy_02b"]
+    main_table = tables["Asy_00a"]
+    years = list(range(2010, 2026))
+    uasc = [value_for(uasc_table, "UASC grant rate", str(year)) for year in years]
+    main_applicants = [value_for(main_table, "Grant rate at initial decision", str(year)) for year in years]
+    fig, ax = plt.subplots(figsize=(10.5, 4.6), layout="constrained")
+    ax.plot(years, uasc, color=PURPLE, linewidth=2.4, marker="o", markersize=3,
+            label="UASC substantive grant rate")
+    ax.plot(years, main_applicants, color=TEAL, linewidth=2.4, marker="o", markersize=3,
+            label="Main-applicant substantive grant rate")
+    ax.set_xticks([2010, 2015, 2020, 2025])
+    ax.set_xlim(2009.5, 2025.5)
+    ax.set_ylim(0, 1)
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda value, _: f"{value:.0%}"))
+    ax.set_ylabel("Share of substantive decisions", color=MUTED)
+    ax.set_title("Initial grant rates: UASC and main applicants", loc="left", color=INK, fontsize=15, pad=14)
+    style_axis(ax)
+    add_legend(fig, ax, ncol=2)
+    save_chart(fig, "uasc-grant-rate")
+
+
+def chart_age_assessments(tables):
+    table = tables["Asy_05"]
+    years = list(range(2010, 2026))
+    under_18 = [value_for(table, "17 and under", str(year)) for year in years]
+    adults = [value_for(table, "18 and over", str(year)) for year in years]
+    raised = [value_for(table, "Raised", str(year)) for year in years]
+    positions = list(range(len(years)))
+    fig, ax = plt.subplots(figsize=(10.5, 5), layout="constrained")
+    ax.bar(positions, under_18, color=TEAL, width=.72, label="Closed: assessed 17 and under")
+    ax.bar(positions, adults, bottom=under_18, color=GOLD, width=.72,
+           label="Closed: assessed 18 and over")
+    ax.plot(positions, raised, color=PURPLE, linewidth=2.2, marker="o", markersize=3.5,
+            label="Assessments raised")
+    closed = [under + adult for under, adult in zip(under_18, adults)]
+    ax.set_xticks(positions, [str(year) for year in years])
+    ax.set_xlim(-.6, len(years) - .4)
+    ax.set_ylim(bottom=0)
+    ax.set_ylabel("People subject to age assessment", color=MUTED)
+    format_count_axis(ax.yaxis, max(max(closed), max(raised)))
+    ax.set_title("Age assessments raised and closed", loc="left", color=INK, fontsize=15, pad=14)
+    style_axis(ax)
+    add_legend(fig, ax, ncol=3, fontsize=8.5)
+    save_chart(fig, "age-assessments")
 
 
 def chart_annual_flows(tables):
@@ -918,6 +1106,33 @@ def chart_quarterly_flows(quarterly):
     save_chart(fig, "quarterly-flows-returns")
 
 
+def chart_quarterly_decision_outcomes(quarterly):
+    data = quarterly.copy()
+    dates = pd.to_datetime(data["period_end"])
+    categories = [
+        ("grants", TEAL, "Grants"),
+        ("refusals", GOLD, "Refusals"),
+        ("withdrawals", PURPLE, "Withdrawals"),
+        ("admin_outcomes", MUTED, "Administrative outcomes"),
+    ]
+    fig, ax = plt.subplots(figsize=(11, 5), layout="constrained")
+    bottom = [0] * len(data)
+    for column, color, label in categories:
+        values = data[column].astype(int).tolist()
+        ax.bar(dates, values, width=68, bottom=bottom, color=color, label=label)
+        bottom = [current + value for current, value in zip(bottom, values)]
+    claims = data["claims"].tolist()
+    ax.plot(dates, claims, color="#b95f4b", linewidth=2, marker="o", markersize=2.2,
+            label="People claiming asylum")
+    ax.set_ylim(bottom=0)
+    format_count_axis(ax.yaxis, max(max(bottom), max(claims)))
+    ax.set_ylabel("People", color=MUTED)
+    ax.set_title("Quarterly claims and recorded initial outcomes", loc="left", color=INK, fontsize=15, pad=14)
+    style_quarter_axis(ax, "2010-01-01", "2026-06-30")
+    add_legend(fig, ax, ncol=3, fontsize=8.5)
+    save_chart(fig, "quarterly-claims-outcomes")
+
+
 def chart_stock_and_returns(quarterly, work_in_progress):
     data = quarterly_flows_with_rolling_returns(quarterly)
     stock = data.dropna(subset=["people_awaiting_initial_decision"])
@@ -980,6 +1195,10 @@ def write_outputs(metadata, tables, quarterly, work_in_progress, support):
     chart_claims_by_age(tables)
     chart_claims_by_route(tables)
     chart_nationality_routes(tables)
+    chart_grant_types(tables)
+    chart_children_decisions(tables)
+    chart_uasc_grant_rate(tables)
+    chart_age_assessments(tables)
     chart_annual_flows(tables)
     chart_grant_rates(tables)
     chart_small_boat_rates(tables)
@@ -988,6 +1207,7 @@ def write_outputs(metadata, tables, quarterly, work_in_progress, support):
     chart_hotel_accommodation(support)
     chart_hotel_regions(support)
     chart_quarterly_flows(quarterly)
+    chart_quarterly_decision_outcomes(quarterly)
     chart_stock_and_returns(quarterly, work_in_progress)
 
 

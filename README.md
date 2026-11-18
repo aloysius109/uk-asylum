@@ -1,6 +1,6 @@
 # UK asylum, in detail
 
-A reproducible UK report built from the Home Office asylum summary tables, year ending June 2026. It covers claims, age and nationality, route before claiming, decisions, small boats, inadmissibility, waiting times and backlog, cohorts, children, support and accommodation, and returns. Its “Who claims asylum?” section includes charts for nationality, age, prior route and nationality-by-route composition.
+A reproducible UK report built from the Home Office asylum summary tables, year ending June 2026. It covers claims, age and nationality, route before claiming, decisions, small boats, inadmissibility, waiting times and backlog, cohorts, children, support and accommodation, and returns. Charts cover nationality, prior route, decisions and outcomes, children, UASC grant rates, and age assessments. `UASC` means Unaccompanied Asylum-Seeking Child.
 
 The report is intentionally separate from [Asylum Tracker](https://github.com/aloysius109/asylum-tracker), which combines global UNHCR analysis with a shorter UK comparison. This project focuses on the wider Home Office summary tables.
 

@@ -52,6 +52,12 @@ The latest pending headline is **40,168 people**, or **32,401 cases**, awaiting 
 
 Tables `Asy_01a` and `Asy_01b` break claims down by age, unaccompanied asylum-seeking children (UASC), and nationality. The age and UASC series cover calendar years and also provide a separate year-ending-June comparison. The nationality table shows the larger origin groups and an “Other” category; it is not a complete list of every nationality in the detailed source data.
 
+::: {.callout-note}
+### What does UASC mean?
+
+`UASC` means **Unaccompanied Asylum-Seeking Child** (plural: children). The Home Office uses the term for someone under 18, or who appears to be under 18, who is claiming asylum in their own right, is separated from both parents, and is not being cared for by an adult responsible for them.
+:::
+
 The 20 nationalities listed individually in `Asy_01b` are compared below for the years ending June 2025 and June 2026. Pakistan was the largest individually listed nationality in the latest year, with **8,305 people**; the table groups other nationalities under “Other,” so the chart is not a full nationality ranking.
 
 ![People claiming asylum by the 20 nationalities listed individually in Asy_01b, comparing the years ending June 2025 and June 2026.](assets/claims-by-nationality.svg){fig-alt="Paired horizontal bars compare asylum claims for the 20 individually listed nationalities in the two years ending June 2025 and June 2026; Pakistan is the largest group in the latest year."}
@@ -88,6 +94,16 @@ The main published initial grant rate shown above is for main applicants. Table 
 
 The detailed outcome table `Asy_02c` compares cases and people in the years ending June 2025 and June 2026. Its total includes multiple types of outcomes, not only grants and refusals. The downloadable workbook-derived tables retain the source’s own units and categories.
 
+The quarterly chart compares people claiming asylum with the recorded outcome groups in the quarterly decision data. A claim and an outcome in the same quarter do not necessarily concern the same people: decisions may follow claims made earlier. Withdrawals and administrative outcomes are shown for completeness, but the grant-rate denominator remains grants plus refusals for substantive decisions.
+
+![Quarterly asylum claims compared with grants, refusals, withdrawals and administrative outcomes from 2010 Q1 to 2026 Q2.](assets/quarterly-claims-outcomes.svg){fig-alt="Quarterly bars stack grants, refusals, withdrawals and administrative outcomes; a line shows asylum claims. Claims and outcomes are separate period flows, not linked cohorts."}
+
+Table `Asy_02a` separates the types of asylum-related grants. In the year ending June 2026 it records **42,394 asylum-related grants** and **3,840 resettlement arrivals**. Resettlement arrivals are plotted separately because they are not initial decisions; source blanks for temporary refugee permission are shown as zero only to render the chart, while remaining missing in the parsed data.
+
+![Asylum-related grants by type and resettlement arrivals, calendar years 2010–2025.](assets/grant-types.svg){fig-alt="Stacked bars show six types of asylum-related grants from 2010 to 2025; a dashed line shows resettlement arrivals separately."}
+
+In 2024, the published total is one higher than the sum of the grant components and resettlement arrivals; the chart retains the published component values rather than adjusting them.
+
 ## Small-boat claims and outcomes
 
 The Home Office recorded **33,949 small-boat asylum claims** in the year ending June 2026, down from 42,389 in the year ending June 2025. These are claims by route, not a count of all small-boat arrivals; a person arriving by small boat may claim later, and not every arrival is represented as a claim in the same period.
@@ -122,7 +138,19 @@ Recent cohorts are incomplete. In the 2025 cohort, 9,009 claims still had a late
 
 `Asy_01a` reports claimants by age and the number of unaccompanied asylum-seeking children. `Asy_02b` reports initial decisions, grants and refusals for children and UASC. Those are different event populations: a child who claimed in a year may receive an initial decision in a later year.
 
+For the year ending June 2026, the Home Office recorded **17,529 initial decisions involving children**, of which 6,518 resulted in grants and 11,011 in refusals. **4,051 UASC** received initial decisions; 2,329 were granted and 1,722 refused. The UASC rate was **57.5%**. The first chart shows UASC decisions as a subset of the child total; the second compares the substantive UASC rate with the main-applicant rate, which refers to a different population.
+
+![Initial decisions involving children, with UASC decisions shown as a subset, calendar years 2010–2025.](assets/children-decisions.svg){fig-alt="Stacked bars show child initial decisions resulting in grants or refusals from 2010 to 2025; a line shows UASC decisions as a subset."}
+
+![Substantive initial grant rates for UASC and main applicants, calendar years 2010–2025.](assets/uasc-grant-rate.svg){fig-alt="Two lines compare the grant share of substantive initial decisions for UASC and main applicants from 2010 to 2025; the populations differ."}
+
 Table `Asy_05` records age assessments, including the number raised and closed and the recorded assessment result. These are administrative statistics about referrals and completed assessments; they do not describe all children claiming asylum and should not be treated as an independent estimate of a person’s age.
+
+In the year ending June 2026, **6,409 assessments were raised** and **6,265 were closed**. Of the closed assessments, 3,512 recorded an assessment of 17 and under, and 2,753 recorded 18 and over. The chart keeps assessments raised separate from closures: the two counts in a period are not necessarily the same cases, and the age category is the assessment’s finding.
+
+![Age assessments raised and closed by assessment result, calendar years 2010–2025.](assets/age-assessments.svg){fig-alt="Stacked bars divide closed age assessments into results of 17 and under or 18 and over; a separate line shows assessments raised."}
+
+The results describe administrative assessments, not an independent estimate of the ages of all people claiming asylum. `UASC` continues to mean **Unaccompanied Asylum-Seeking Child** in this section.
 
 ## Asylum support and accommodation
 
@@ -163,6 +191,8 @@ This edition uses the Home Office **asylum summary tables, year ending June 2026
 The analysis parses 18 summary tables directly and validates the quarterly flow extracts against `Asy_00a` for calendar years 2010–2025, the year ending June 2026 and the latest pending stock. Support and hotel counts are reconciled for year-end 2022–2025 and June 2026; regional hotel counts also sum to the national totals. The ASY_03 work-in-progress series ends in June 2024. Cells marked `z`, `:`, `-`, or similar source suppression or non-applicability markers remain missing; they are never converted into zero. Calendar years, rolling years and quarters remain distinct. The 2011 claim total in `Asy_00a` differs by six from `Asy_01a`; the tables retain the source figures and are not forcibly reconciled across tables.
 
 Count axes use comma-separated values below 10,000 and `K` abbreviations at or above that scale; this convention is implemented in `COUNT_AXIS_K_THRESHOLD` in `scripts/analyze.py`. Chart legends sit below the plot area rather than over the data, with clear space beneath the axis labels.
+
+In the grant-type chart, missing source values for temporary refugee permission are represented as zero only for plotting; the parsed source data preserve them as missing. Resettlement arrivals are shown separately from initial decisions.
 
 The workbook also contains appeals data, but its series ends in March 2023 because later data were unavailable. This report does not present an appeals chapter. Prior-route figures are Official Statistics in Development. Tables `Asy_03b` and `Asy_03c` are scheduled to be discontinued after this release.
 

@@ -53,17 +53,24 @@ def test_all_chart_legends_are_outside_the_plot_area(monkeypatch):
         analyze.chart_claims_by_age(tables)
         analyze.chart_claims_by_route(tables)
         analyze.chart_nationality_routes(tables)
+        analyze.chart_grant_types(tables)
+        analyze.chart_children_decisions(tables)
+        analyze.chart_uasc_grant_rate(tables)
+        analyze.chart_age_assessments(tables)
         analyze.chart_small_boat_rates(tables)
         analyze.chart_waiting_times(tables)
         analyze.chart_hotel_accommodation(support)
         analyze.chart_hotel_regions(support)
         analyze.chart_quarterly_flows(quarterly)
+        analyze.chart_quarterly_decision_outcomes(quarterly)
         analyze.chart_stock_and_returns(quarterly, work_in_progress)
 
         assert {name for name, _ in rendered} == {
             "claims-by-nationality", "claims-by-age", "claims-by-route", "nationality-routes",
+            "grant-types", "children-decisions", "uasc-grant-rate", "age-assessments",
             "annual-claims-decisions", "small-boat-grant-rates", "waiting-times",
-            "hotel-accommodation", "hotel-by-region", "quarterly-flows-returns", "stock-vs-returns",
+            "hotel-accommodation", "hotel-by-region", "quarterly-flows-returns",
+            "quarterly-claims-outcomes", "stock-vs-returns",
         }
         for name, fig in rendered:
             fig.canvas.draw()
@@ -93,6 +100,39 @@ def test_who_claims_age_groups_and_routes_use_the_correct_rows():
     assert uasc["18 and over"]["values"]["Year ending June 2026"] is None
     assert value_for(tables["Asy_01d"], "Pakistan", "Visas and Other Leave") == 7324
     assert value_for(tables["Asy_01d"], "Eritrea", "Small Boat") == 6125
+
+
+def test_decision_child_and_age_assessment_tables_reconcile():
+    _, tables = load_tables()
+    validate_tables(tables)
+    latest = "Year ending June 2026"
+
+    grants = tables["Asy_02a"]
+    assert value_for(grants, "Asylum-related grants", latest) == 42394
+    assert value_for(grants, "Resettlement arrivals", latest) == 3840
+    assert value_for(grants, "Total", latest) == 46234
+    assert value_for(grants, "Temporary Refugee Permission", "2024") is None
+    components_2024 = sum(
+        value_for(grants, label, "2024") or 0
+        for label in (
+            "Refugee Permission", "Temporary Refugee Permission", "Humanitarian Protection",
+            "Discretionary Leave", "UASC Leave", "Other Grants", "Resettlement arrivals",
+        )
+    )
+    assert value_for(grants, "Total", "2024") - components_2024 == 1
+
+    children = tables["Asy_02b"]
+    assert value_for(children, "Children receiving initial decisions", latest) == 17529
+    assert value_for(children, "Children granted", latest) + value_for(children, "Children refused", latest) == 17529
+    assert value_for(children, "UASC receiving initial decisions", latest) == 4051
+    assert value_for(children, "UASC granted", latest) + value_for(children, "UASC refused", latest) == 4051
+    assert round(value_for(children, "UASC grant rate", latest) * 100, 1) == 57.5
+
+    assessments = tables["Asy_05"]
+    assert value_for(assessments, "Raised", latest) == 6409
+    assert value_for(assessments, "Closed", latest) == 6265
+    assert value_for(assessments, "17 and under", latest) == 3512
+    assert value_for(assessments, "18 and over", latest) == 2753
 
 
 def test_suppressed_quarterly_source_markers_remain_missing():

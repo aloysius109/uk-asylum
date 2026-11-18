@@ -39,6 +39,31 @@
     "visas_and_other_leave_people": 34999,
     "visas_and_other_leave_share": 0.40748157548520797
   },
+  "decisions": {
+    "claims": 85891,
+    "substantive_decisions": 115872,
+    "grants": 42394,
+    "refusals": 73478,
+    "withdrawals": 16265,
+    "administrative_outcomes": 2347,
+    "asylum_related_grants": 42394,
+    "resettlement_arrivals": 3840,
+    "total_grants_and_arrivals": 46234,
+    "published_initial_decisions": 115872
+  },
+  "children": {
+    "children_decisions": 17529,
+    "children_granted": 6518,
+    "children_refused": 11011,
+    "uasc_decisions": 4051,
+    "uasc_granted": 2329,
+    "uasc_refused": 1722,
+    "uasc_grant_rate": 0.574919772895581,
+    "age_assessments_raised": 6409,
+    "age_assessments_closed": 6265,
+    "age_assessments_17_and_under": 3512,
+    "age_assessments_18_and_over": 2753
+  },
   "returns_and_stock": {
     "latest_quarter": "2026 Q2",
     "quarterly_claims": 17233,

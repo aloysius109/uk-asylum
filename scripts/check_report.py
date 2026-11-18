@@ -35,6 +35,8 @@ def main():
     small_boat = headlines["small_boat_case_grant_rates"]
     hotel = headlines["hotel_accommodation"]
     who_claims = headlines["who_claims"]
+    decisions = headlines["decisions"]
+    children = headlines["children"]
 
     require(annual["people_claiming_asylum"] == 101911, "Calendar 2025 claims changed from the report headline.")
     require(round(annual["published_initial_grant_rate_main_applicants"] * 100, 1) == 42.1,
@@ -71,6 +73,27 @@ def main():
             and who_claims["visas_and_other_leave_people"] == 34999
             and round(who_claims["visas_and_other_leave_share"] * 100, 1) == 40.7,
             "The Who claims asylum headline figures changed.")
+    require(decisions["claims"] == 85891
+            and decisions["substantive_decisions"] == 115872
+            and decisions["grants"] == 42394
+            and decisions["refusals"] == 73478
+            and decisions["withdrawals"] == 16265
+            and decisions["asylum_related_grants"] == 42394
+            and decisions["resettlement_arrivals"] == 3840
+            and decisions["total_grants_and_arrivals"] == 46234,
+            "The year-ending-June 2026 claims and decision figures changed.")
+    require(children["children_decisions"] == 17529
+            and children["children_granted"] == 6518
+            and children["children_refused"] == 11011
+            and children["uasc_decisions"] == 4051
+            and children["uasc_granted"] == 2329
+            and children["uasc_refused"] == 1722
+            and round(children["uasc_grant_rate"] * 100, 1) == 57.5
+            and children["age_assessments_raised"] == 6409
+            and children["age_assessments_closed"] == 6265
+            and children["age_assessments_17_and_under"] == 3512
+            and children["age_assessments_18_and_over"] == 2753,
+            "The year-ending-June 2026 child decision or age-assessment figures changed.")
 
     claims = [
         "101,911", "42.1%", "38.1%", "40,168", "32,401", "85,891", "115,872",
@@ -81,6 +104,16 @@ def main():
         "8,305 people", "4,275 UASC claims", "33,949 claims by small boat",
         "34,999 following visas or other leave", "6,125 were recorded under small boat",
         "7,324 of 8,305 claims", "by up to seven people", "avoiding double-counting",
+        "UASC` means **Unaccompanied Asylum-Seeking Child**", "separated from both parents",
+        "42,394 asylum-related grants", "3,840 resettlement arrivals",
+        "shown as zero only to render the chart",
+        "In 2024, the published total is one higher than the sum of the grant components and resettlement arrivals",
+        "A claim and an outcome in the same quarter do not necessarily concern the same people",
+        "17,529 initial decisions involving children", "6,518 resulted in grants",
+        "11,011 in refusals", "4,051 UASC", "2,329 were granted and 1,722 refused",
+        "57.5%", "6,409 assessments were raised", "6,265 were closed",
+        "3,512 recorded an assessment of 17 and under", "2,753 recorded 18 and over",
+        "the age category is the assessment’s finding",
         "17,233", "19,079", "3,157", "12,568", "224,742", "Monthly counts are not published",
         "latest seven quarters are provisional", "refused entry at port", "main-applicant cases",
         "56,018 people in September 2023", "Section 98 line is a separate historical category",
@@ -119,14 +152,16 @@ def main():
 
     for chart in [
         "claims-by-nationality.svg", "claims-by-age.svg", "claims-by-route.svg", "nationality-routes.svg",
+        "grant-types.svg", "children-decisions.svg", "uasc-grant-rate.svg", "age-assessments.svg",
         "annual-claims-decisions.svg", "initial-grant-rates.svg", "small-boat-grant-rates.svg",
-        "waiting-times.svg", "asylum-support.svg", "quarterly-flows-returns.svg", "stock-vs-returns.svg",
+        "waiting-times.svg", "asylum-support.svg", "quarterly-flows-returns.svg",
+        "quarterly-claims-outcomes.svg", "stock-vs-returns.svg",
         "hotel-accommodation.svg", "hotel-by-region.svg",
     ]:
         require((ROOT / "assets" / chart).is_file(), f"Expected report chart is missing: {chart}")
         require(f"assets/{chart}" in report, f"Report does not reference its chart: {chart}")
 
-    print("Report QA passed: pinned figures, unit distinctions, thirteen charts and twelve downloads are consistent.")
+    print("Report QA passed: pinned figures, unit distinctions, eighteen charts and twelve downloads are consistent.")
 
 
 if __name__ == "__main__":
