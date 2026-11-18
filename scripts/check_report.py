@@ -68,7 +68,7 @@ def main():
         "42,394", "73,478", "33,949", "42,389", "55.7%", "47.7%", "93,293",
         "16,021", "12,568", "3,841", "8,727", "9,009", "Official Statistics in Development",
         "16,265 withdrawals", "grants plus refusals", "administrative outcomes",
-        "otherwise closed", "COUNT_AXIS_K_THRESHOLD",
+        "otherwise closed", "COUNT_AXIS_K_THRESHOLD", "Chart legends sit below the plot area",
         "17,233", "19,079", "3,157", "12,568", "224,742", "Monthly counts are not published",
         "latest seven quarters are provisional", "refused entry at port", "main-applicant cases",
         "56,018 people in September 2023", "Section 98 line is a separate historical category",

@@ -146,7 +146,7 @@ This edition uses the Home Office **asylum summary tables, year ending June 2026
 
 The analysis parses 18 summary tables directly and validates the quarterly flow extracts against `Asy_00a` for calendar years 2010–2025, the year ending June 2026 and the latest pending stock. Support and hotel counts are reconciled for year-end 2022–2025 and June 2026; regional hotel counts also sum to the national totals. The ASY_03 work-in-progress series ends in June 2024. Cells marked `z`, `:`, `-`, or similar source suppression or non-applicability markers remain missing; they are never converted into zero. Calendar years, rolling years and quarters remain distinct. The 2011 claim total in `Asy_00a` differs by six from `Asy_01a`; the tables retain the source figures and are not forcibly reconciled across tables.
 
-Count axes use comma-separated values below 10,000 and `K` abbreviations at or above that scale; this convention is implemented in `COUNT_AXIS_K_THRESHOLD` in `scripts/analyze.py`.
+Count axes use comma-separated values below 10,000 and `K` abbreviations at or above that scale; this convention is implemented in `COUNT_AXIS_K_THRESHOLD` in `scripts/analyze.py`. Chart legends sit below the plot area rather than over the data.
 
 The workbook also contains appeals data, but its series ends in March 2023 because later data were unavailable. This report does not present an appeals chapter. Prior-route figures are Official Statistics in Development. Tables `Asy_03b` and `Asy_03c` are scheduled to be discontinued after this release.
 

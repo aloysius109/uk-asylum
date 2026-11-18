@@ -507,6 +507,14 @@ def save_chart(fig, name):
     path.write_text("\n".join(line.rstrip() for line in svg.splitlines()) + "\n", encoding="utf-8")
 
 
+def add_legend(fig, ax, ncol, fontsize=9):
+    handles, labels = ax.get_legend_handles_labels()
+    fig.legend(
+        handles, labels, loc="outside lower center", ncol=ncol,
+        frameon=False, fontsize=fontsize,
+    )
+
+
 def chart_annual_flows(tables):
     table = tables["Asy_00a"]
     years = list(range(2010, 2026))
@@ -526,7 +534,7 @@ def chart_annual_flows(tables):
     format_count_axis(ax.yaxis, max(all_values))
     ax.set_title("Asylum claims and initial decisions", loc="left", color=INK, fontsize=15, pad=14)
     style_axis(ax)
-    ax.legend(frameon=False, loc="upper left", fontsize=9)
+    add_legend(fig, ax, ncol=2)
     save_chart(fig, "annual-claims-decisions")
 
 
@@ -569,7 +577,7 @@ def chart_small_boat_rates(tables):
     ax.yaxis.grid(False)
     ax.spines[["top", "right", "left", "bottom"]].set_visible(False)
     ax.tick_params(axis="both", colors=MUTED, labelsize=9, length=0, pad=6)
-    ax.legend(frameon=False, loc="lower right", fontsize=9)
+    add_legend(fig, ax, ncol=2)
     save_chart(fig, "small-boat-grant-rates")
 
 
@@ -597,7 +605,7 @@ def chart_waiting_times(tables):
     ax.yaxis.grid(False)
     ax.spines[["top", "right", "left", "bottom"]].set_visible(False)
     ax.tick_params(axis="x", colors=MUTED, labelsize=9, length=0, pad=7)
-    ax.legend(frameon=False, loc="lower center", bbox_to_anchor=(.5, -0.5), ncol=2, fontsize=8)
+    add_legend(fig, ax, ncol=2, fontsize=8)
     save_chart(fig, "waiting-times")
 
 
@@ -633,7 +641,7 @@ def chart_hotel_accommodation(support):
     ax.plot(dates, data["hotel"], color=TEAL, linewidth=2.7, marker="o", markersize=3,
             label="Contingency accommodation – hotels")
     hotel_start = pd.Timestamp("2022-12-31")
-    ax.axvline(hotel_start, color=GRID, linewidth=1.2, linestyle=":",
+    ax.axvline(hotel_start, color=MUTED, linewidth=1.2, linestyle=":",
                label="Separate hotel count begins")
     ax.set_ylim(bottom=0)
     ax.set_ylabel("People receiving Home Office support", color=MUTED)
@@ -642,7 +650,7 @@ def chart_hotel_accommodation(support):
     style_quarter_axis(ax, "2014-03-31", "2026-06-30")
     years = [2014, 2018, 2022, 2026]
     ax.set_xticks([pd.Timestamp(year=year, month=1, day=1) for year in years], [str(year) for year in years])
-    ax.legend(frameon=False, loc="upper left", fontsize=8.5)
+    add_legend(fig, ax, ncol=2, fontsize=8.5)
     save_chart(fig, "hotel-accommodation")
 
 
@@ -676,7 +684,7 @@ def chart_hotel_regions(support):
     ax.spines[["top", "right", "left", "bottom"]].set_visible(False)
     ax.tick_params(axis="both", colors=MUTED, labelsize=9, length=0, pad=7)
     ax.set_axisbelow(True)
-    ax.legend(frameon=False, loc="lower right", fontsize=9)
+    add_legend(fig, ax, ncol=2)
     save_chart(fig, "hotel-by-region")
 
 
@@ -707,7 +715,7 @@ def chart_quarterly_flows(quarterly):
     format_count_axis(ax.yaxis, max(data["claims"].max(), data["substantive_decisions"].max()))
     ax.set_title("Quarterly asylum claims, decisions and returns", loc="left", color=INK, fontsize=15, pad=14)
     style_quarter_axis(ax, "2010-01-01", "2026-06-30")
-    ax.legend(frameon=False, loc="upper left", ncol=1, fontsize=9)
+    add_legend(fig, ax, ncol=3)
     save_chart(fig, "quarterly-flows-returns")
 
 
@@ -733,7 +741,7 @@ def chart_stock_and_returns(quarterly, work_in_progress):
     ax.set_ylabel("People, cases or returns", color=MUTED)
     ax.set_title("Waiting stocks and returns over time", loc="left", color=INK, fontsize=15, pad=14)
     style_quarter_axis(ax, "2010-01-01", "2026-06-30")
-    ax.legend(frameon=False, loc="upper left", fontsize=8.5)
+    add_legend(fig, ax, ncol=3, fontsize=8.5)
     save_chart(fig, "stock-vs-returns")
 
 

@@ -6,7 +6,8 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from analyze import (  # noqa: E402
+import analyze  # noqa: E402
+from analyze import (
     SHEETS,
     cell_value,
     format_count,
@@ -36,6 +37,40 @@ def test_count_axis_labels_use_separators_or_k_when_the_scale_warrants_it():
     assert format_count(0, 20_000) == "0"
     assert format_count(20_000, 20_000) == "20K"
     assert format_count(125_000, 125_000) == "125K"
+
+
+def test_all_chart_legends_are_outside_the_plot_area(monkeypatch):
+    _, tables = load_tables()
+    quarterly, work_in_progress = load_quarterly_data()
+    support = load_support_data()
+    rendered = []
+    monkeypatch.setattr(analyze, "save_chart", lambda fig, name: rendered.append((name, fig)))
+
+    try:
+        analyze.chart_annual_flows(tables)
+        analyze.chart_small_boat_rates(tables)
+        analyze.chart_waiting_times(tables)
+        analyze.chart_hotel_accommodation(support)
+        analyze.chart_hotel_regions(support)
+        analyze.chart_quarterly_flows(quarterly)
+        analyze.chart_stock_and_returns(quarterly, work_in_progress)
+
+        assert {name for name, _ in rendered} == {
+            "annual-claims-decisions", "small-boat-grant-rates", "waiting-times",
+            "hotel-accommodation", "hotel-by-region", "quarterly-flows-returns", "stock-vs-returns",
+        }
+        for name, fig in rendered:
+            fig.canvas.draw()
+            assert len(fig.legends) == 1, name
+            assert fig.axes[0].get_legend() is None, name
+            legend = fig.legends[0]
+            renderer = fig.canvas.get_renderer()
+            assert not legend.get_window_extent(renderer).overlaps(
+                fig.axes[0].get_window_extent(renderer)
+            ), name
+    finally:
+        for _, fig in rendered:
+            analyze.plt.close(fig)
 
 
 def test_suppressed_quarterly_source_markers_remain_missing():
