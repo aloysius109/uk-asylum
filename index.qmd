@@ -118,19 +118,29 @@ Support counts are not counts of households or hotel rooms. The hotel figure is 
 
 ## Returns
 
-Table `Asy_00a` includes asylum-related returns and separate enforced and voluntary return counts. These describe recorded return events; they are not equivalent to the number of initial refusals, and they may relate to decisions or claims from earlier periods. The year-ending-June 2026 figures are 12,568 asylum-related returns, including 3,841 enforced and 8,727 voluntary returns.
+The summary table reports returns by year, but the Home Office’s detailed return workbook and claims datasets support a quarterly comparison. The first chart shows people claiming asylum, substantive initial decisions (grants plus refusals), and asylum-related returns. **Monthly counts are not published in these tables**, so quarterly is the finest common period. In the latest quarter, 2026 Q2, the sources record 17,233 claims, 19,079 substantive initial decisions and 3,157 asylum-related returns. The latest seven quarters are provisional and may be revised.
+
+![Quarterly asylum claims, substantive initial decisions and asylum-related returns from 2010 Q1 to 2026 Q2.](assets/quarterly-flows-returns.svg){fig-alt="Three quarterly lines compare people claiming asylum, substantive initial decisions, and asylum-related returns from 2010 Q1 through 2026 Q2. Returns are much lower in volume than claims and decisions."}
+
+The quarterly return measure combines enforced and voluntary asylum-related returns and **excludes** people refused entry at port who subsequently departed. Returns are recorded events, not a count of initial refusals; they may relate to claims or decisions from earlier periods. The quarterly decision line uses the same substantive denominator described above and excludes withdrawals and administrative outcomes.
+
+The second chart compares the quarterly stock of people awaiting an initial decision with returns over the previous four quarters. In the year ending June 2026, there were **12,568 asylum-related returns**: 3,841 enforced and 8,727 voluntary. The chart also shows the Home Office’s wider total work-in-progress series, which counts **main-applicant cases** and is published annually through June 2024. At June 2026, 40,168 people were awaiting an initial decision; the latest June work-in-progress total was 224,742 cases in 2024.
+
+![Quarterly initial-decision waiting stock, annual work-in-progress cases and asylum-related returns over the previous 12 months.](assets/stock-vs-returns.svg){fig-alt="A common-scale chart compares people awaiting an initial decision, the broader annual work-in-progress case count through June 2024, and asylum-related returns in the previous 12 months."}
+
+The lines use a common count scale to show their different magnitudes, but their units and coverage differ: the pending series counts people, work in progress counts main-applicant cases, and returns are events. These administrative measures are **not a complete estimate of every asylum seeker currently in the UK**; the published tables do not provide one comprehensive population-stock series. The flows and stocks are not linked cohorts, so returns should not be subtracted from either stock to estimate its change. `Asy_04` separately reports known returns for claim-year cohorts and uses a different basis.
 
 ## Data, definitions and reproducibility
 
-This edition uses the Home Office **asylum summary tables, year ending June 2026**, published on 27 August 2026. The saved Open Document Spreadsheet (ODS) is the analysis input. Its SHA-256 fingerprint and retrieval timestamp are recorded in `data/raw/source.json`; the analysis refuses to run if the workbook does not match that fingerprint. Rendering the report does not download or silently replace source data.
+This edition uses the Home Office **asylum summary tables, year ending June 2026**, published on 27 August 2026, alongside reviewed quarterly extracts from the asylum claims, pending, returns and migration-transparency workbooks. The summary ODS fingerprint is recorded in `data/raw/source.json`; the quarterly workbook and extract hashes are recorded in `data/raw/quarterly-sources.json`. The analysis refuses to run if either the ODS or the quarterly extracts differ from their pinned hashes. Rendering the report does not download or silently replace source data.
 
-The analysis parses 18 summary tables directly. Cells marked `z`, `:`, or similar source suppression or non-applicability markers remain missing; they are never converted into zero. Calendar years and rolling year-ending-June periods remain distinct. The 2011 claim total in `Asy_00a` differs by six from `Asy_01a`; the tables retain the source figures and are not forcibly reconciled across tables.
+The analysis parses 18 summary tables directly and validates the quarterly extracts against `Asy_00a` for calendar years 2010–2025, the year ending June 2026 and the latest pending stock. The ASY_03 work-in-progress series ends in June 2024. Cells marked `z`, `:`, `-`, or similar source suppression or non-applicability markers remain missing; they are never converted into zero. Calendar years, rolling years and quarters remain distinct. The 2011 claim total in `Asy_00a` differs by six from `Asy_01a`; the tables retain the source figures and are not forcibly reconciled across tables.
 
 Count axes use comma-separated values below 10,000 and `K` abbreviations at or above that scale; this convention is implemented in `COUNT_AXIS_K_THRESHOLD` in `scripts/analyze.py`.
 
 The workbook also contains appeals data, but its series ends in March 2023 because later data were unavailable. This report does not present an appeals chapter. Prior-route figures are Official Statistics in Development. Tables `Asy_03b` and `Asy_03c` are scheduled to be discontinued after this release.
 
-To rebuild locally, install the packages in `requirements.txt`, then run `python scripts/analyze.py`, `python scripts/check_report.py`, and `quarto render`. Run `python -m pytest tests` for parser and consistency checks. The output is a fixed, reviewable snapshot, not an automatic refresh of the Home Office data.
+To rebuild locally, install the packages in `requirements.txt`, run `python scripts/prepare_quarterly.py` when reconstructing the pinned extracts, then run `python scripts/analyze.py`, `python scripts/check_report.py`, and `quarto render`. Run `python -m pytest tests` for parser and consistency checks. The output is a fixed, reviewable snapshot, not an automatic refresh of the Home Office data.
 
 ## Download the data
 
@@ -143,6 +153,9 @@ These files are derived from the pinned workbook above. The all-table CSV is a l
 - [Parsed tables with provenance (JSON)](data/derived/tables.json)
 - [Home Office asylum summary workbook (ODS)](data/raw/asylum-summary-jun-2026.ods)
 - [Source URL, retrieval time and SHA-256 (JSON)](data/raw/source.json)
+- [Quarterly claims, decisions, returns and pending stock (CSV)](data/derived/quarterly-flows.csv)
+- [ASY_03 work-in-progress snapshots (CSV)](data/raw/asylum-work-in-progress.csv)
+- [Quarterly source URLs and fingerprints (JSON)](data/raw/quarterly-sources.json)
 :::
 
 ## Related reports

@@ -10,7 +10,9 @@ Published report: <https://aloysius109.github.io/uk-asylum/>.
 
 The source workbook is vendored at `data/raw/asylum-summary-jun-2026.ods`. `data/raw/source.json` records its Home Office URL, retrieval time and SHA-256. The analysis verifies that fingerprint and never downloads or replaces the accepted workbook during rendering.
 
-This edition uses the tables listed in `scripts/analyze.py`. It keeps calendar-year and year-ending-June periods separate, preserves missing or suppressed values as missing, and retains the source’s case/person distinctions. The main initial grant rate is for main applicants: grants of protection or other leave divided by substantive initial decisions (grants plus refusals), excluding withdrawals and administrative outcomes. The small-boat nationality rates are case-based. The 2011 claim totals in `Asy_00a` and `Asy_01a` differ by six and are not artificially reconciled.
+This edition uses the tables listed in `scripts/analyze.py`, plus quarterly extracts from the Home Office claims, pending, returns and migration-transparency workbooks. `data/raw/quarterly-sources.json` records their URLs and hashes and pins both committed CSV extracts. The workbooks are cached under the ignored `data/raw/cache/` directory; rendering and CI use only the committed CSVs and do not download data.
+
+The analysis keeps calendar-year, rolling-year and quarterly periods separate, preserves missing or suppressed values as missing, and retains the source’s case/person distinctions. The main initial grant rate is for main applicants: grants of protection or other leave divided by substantive initial decisions (grants plus refusals), excluding withdrawals and administrative outcomes. The small-boat nationality rates are case-based. The 2011 claim totals in `Asy_00a` and `Asy_01a` differ by six and are not artificially reconciled.
 
 The workbook’s appeals series ends in March 2023 and is not included as a report chapter. Prior-route data are Official Statistics in Development. The Home Office says the `Asy_03b` and `Asy_03c` tables will be discontinued after this release.
 
@@ -24,13 +26,14 @@ With Python 3.12 and Quarto installed:
 
 ```powershell
 python -m pip install -r requirements.txt
+python scripts/prepare_quarterly.py
 python scripts/analyze.py
 python scripts/check_report.py
 python -m pytest tests
 quarto render
 ```
 
-The analysis writes charts to `assets/`, parsed source tables and downloadable CSVs to `data/derived/`, and a dated headline record. Quarto writes the static site to `_site/`.
+`prepare_quarterly.py` downloads the four pinned workbooks only when they are not in the local cache, checks their hashes and verifies the extracts against `Asy_00a`. The analysis writes charts to `assets/`, parsed source tables and downloadable CSVs to `data/derived/`, and a dated headline record. Quarto writes the static site to `_site/`.
 
 ## Source watch and adopting a new release
 

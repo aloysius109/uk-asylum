@@ -29,5 +29,15 @@
   "small_boat_case_grant_rates": {
     "year_ending_june_2025": 0.557186840029516,
     "year_ending_june_2026": 0.477047322187589
+  },
+  "returns_and_stock": {
+    "latest_quarter": "2026 Q2",
+    "quarterly_claims": 17233,
+    "quarterly_substantive_decisions": 19079,
+    "quarterly_asylum_related_returns": 3157,
+    "rolling_12_month_asylum_related_returns": 12568,
+    "people_awaiting_initial_decision": 40168,
+    "total_work_in_progress_cases": 224742,
+    "work_in_progress_quarter": "2024 Q2"
   }
 }

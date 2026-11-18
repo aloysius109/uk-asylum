@@ -2,7 +2,14 @@
 import re
 from pathlib import Path
 
-from analyze import ROOT, load_tables, make_headlines, validate_tables
+from analyze import (
+    ROOT,
+    load_quarterly_data,
+    load_tables,
+    make_headlines,
+    validate_quarterly_data,
+    validate_tables,
+)
 
 
 def require(condition, message):
@@ -15,9 +22,12 @@ def main():
     report = report_path.read_text(encoding="utf-8")
     metadata, tables = load_tables()
     validate_tables(tables)
-    headlines = make_headlines(metadata, tables)
+    quarterly, work_in_progress = load_quarterly_data()
+    validate_quarterly_data(tables, quarterly, work_in_progress)
+    headlines = make_headlines(metadata, tables, quarterly, work_in_progress)
     annual = headlines["calendar_2025"]
     latest = headlines["year_ending_june_2026"]
+    returns_and_stock = headlines["returns_and_stock"]
     small_boat = headlines["small_boat_case_grant_rates"]
 
     require(annual["people_claiming_asylum"] == 101911, "Calendar 2025 claims changed from the report headline.")
@@ -33,6 +43,14 @@ def main():
     require(round(small_boat["year_ending_june_2025"] * 100, 1) == 55.7
             and round(small_boat["year_ending_june_2026"] * 100, 1) == 47.7,
             "The published case-based small-boat rates changed.")
+    require(returns_and_stock["latest_quarter"] == "2026 Q2"
+            and returns_and_stock["quarterly_claims"] == 17233
+            and returns_and_stock["quarterly_substantive_decisions"] == 19079
+            and returns_and_stock["quarterly_asylum_related_returns"] == 3157
+            and returns_and_stock["rolling_12_month_asylum_related_returns"] == 12568
+            and returns_and_stock["people_awaiting_initial_decision"] == 40168
+            and returns_and_stock["total_work_in_progress_cases"] == 224742,
+            "The quarterly returns or stock figures changed.")
 
     claims = [
         "101,911", "42.1%", "38.1%", "40,168", "32,401", "85,891", "115,872",
@@ -40,6 +58,10 @@ def main():
         "16,021", "12,568", "3,841", "8,727", "9,009", "Official Statistics in Development",
         "16,265 withdrawals", "grants plus refusals", "administrative outcomes",
         "otherwise closed", "COUNT_AXIS_K_THRESHOLD",
+        "17,233", "19,079", "3,157", "12,568", "224,742", "Monthly counts are not published",
+        "latest seven quarters are provisional", "refused entry at port", "main-applicant cases",
+        "not be subtracted from either stock", "not a complete estimate of every asylum seeker currently in the UK",
+        "2010 Q1 to 2026 Q2",
         "z", "2011 claim total in `Asy_00a` differs by six from `Asy_01a`",
     ]
     for claim in claims:
@@ -52,6 +74,9 @@ def main():
         "data/derived/tables.json",
         "data/raw/asylum-summary-jun-2026.ods",
         "data/raw/source.json",
+        "data/derived/quarterly-flows.csv",
+        "data/raw/asylum-work-in-progress.csv",
+        "data/raw/quarterly-sources.json",
     ]:
         require((ROOT / path).is_file(), f"Report download target does not exist: {path}")
 
@@ -59,18 +84,18 @@ def main():
     require(len(download) == 2, "Download section is missing.")
     content = download[1].split("\n## Related reports", 1)[0]
     links = re.findall(r"\[[^\]]+\]\(([^)]+)\)", content)
-    require(len(links) == 6, "Expected six reader-facing data download links.")
+    require(len(links) == 9, "Expected nine reader-facing data download links.")
     for link in links:
         require((ROOT / link).is_file(), f"Download target does not exist: {link}")
 
     for chart in [
         "annual-claims-decisions.svg", "initial-grant-rates.svg", "small-boat-grant-rates.svg",
-        "waiting-times.svg", "asylum-support.svg",
+        "waiting-times.svg", "asylum-support.svg", "quarterly-flows-returns.svg", "stock-vs-returns.svg",
     ]:
         require((ROOT / "assets" / chart).is_file(), f"Expected report chart is missing: {chart}")
         require(f"assets/{chart}" in report, f"Report does not reference its chart: {chart}")
 
-    print("Report QA passed: pinned figures, unit distinctions, five charts and six downloads are consistent.")
+    print("Report QA passed: pinned figures, unit distinctions, seven charts and nine downloads are consistent.")
 
 
 if __name__ == "__main__":

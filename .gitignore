@@ -7,3 +7,4 @@ _site/
 source-watch.md
 /.quarto/
 **/*.quarto_ipynb
+data/raw/cache/

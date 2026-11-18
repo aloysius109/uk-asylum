@@ -1,0 +1,38 @@
+{
+  "release": "Year ending June 2026",
+  "source_pages": {
+    "asylum_and_returns": "https://www.gov.uk/government/statistical-data-sets/immigration-system-statistics-data-tables",
+    "transparency": "https://www.gov.uk/government/statistical-data-sets/migration-transparency-data"
+  },
+  "retrieved": "2026-11-18T16:33:57+00:00",
+  "workbooks": {
+    "claims_decisions": {
+      "url": "https://assets.publishing.service.gov.uk/media/6a85c2d7c9205b515d421eeb/asylum-claims-datasets-jun-2026.xlsx",
+      "filename": "asylum-claims-datasets-jun-2026.xlsx",
+      "sha256": "10788dae8042fdb4f49ce4fc1447335a5cc868df48349969d66185bfda12e02f"
+    },
+    "pending": {
+      "url": "https://assets.publishing.service.gov.uk/media/6a85c2bcb0504df9f2c897ff/asylum-claims-awaiting-decision-datasets-jun-2026.xlsx",
+      "filename": "asylum-claims-awaiting-decision-datasets-jun-2026.xlsx",
+      "sha256": "1fe6c189fa5429681cd1414c9e8a131c72a1ec6ba917d5fe7cfeda9d72463da5"
+    },
+    "returns": {
+      "url": "https://assets.publishing.service.gov.uk/media/6a85c4f754bcee010d514572/returns-datasets-jun-2026.xlsx",
+      "filename": "returns-datasets-jun-2026.xlsx",
+      "sha256": "7c16d6e2a68ff4866562cde5e96a719013995ca45165c1ff3c547f795ab85e3f"
+    },
+    "transparency": {
+      "url": "https://assets.publishing.service.gov.uk/media/6a96a66b3b22fb169dc18fe4/immigration-and-protection-data-apr-to-jun-2026.xlsx",
+      "filename": "immigration-and-protection-data-apr-to-jun-2026.xlsx",
+      "sha256": "07bf35f8fe2803a034e113dd604f275ced5cd1d522c5e98f4aa1b84362b2e11e"
+    }
+  },
+  "quarterly_extract": {
+    "file": "quarterly-extract.csv",
+    "sha256": "02bc3aae61ab496cc4e4d1e2380d1a14a1af71cba13c4d827f808001ebcc5809"
+  },
+  "work_in_progress_extract": {
+    "file": "asylum-work-in-progress.csv",
+    "sha256": "6e64fdf4bd2f8374a36f120ae991a7293844f3dd3497c1404368e91afa4e5d80"
+  }
+}

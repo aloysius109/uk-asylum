@@ -15,8 +15,14 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 WORKBOOK = ROOT / "data" / "raw" / "asylum-summary-jun-2026.ods"
 SOURCE = ROOT / "data" / "raw" / "source.json"
+QUARTERLY_MANIFEST = ROOT / "data" / "raw" / "quarterly-sources.json"
 ASSETS = ROOT / "assets"
 DERIVED = ROOT / "data" / "derived"
+QUARTERLY_COLUMNS = [
+    "quarter", "period_end", "claims", "grants", "refusals", "substantive_decisions",
+    "withdrawals", "admin_outcomes", "enforced_returns", "voluntary_returns",
+    "refused_entry_returns", "asylum_related_returns", "people_awaiting_initial_decision",
+]
 
 SHEETS = {
     "Asy_00a": "Date / As at the end of...",
@@ -157,6 +163,96 @@ def numeric(value, context):
     return float(value)
 
 
+def load_quarterly_data():
+    manifest = json.loads(QUARTERLY_MANIFEST.read_text(encoding="utf-8"))
+    extracts = {}
+    for key in ("quarterly_extract", "work_in_progress_extract"):
+        entry = manifest.get(key, {})
+        path = ROOT / "data" / "raw" / entry.get("file", "")
+        if not path.is_file():
+            raise ValueError(f"Pinned quarterly data file is missing: {path}.")
+        actual_hash = hashlib.sha256(path.read_bytes()).hexdigest()
+        if actual_hash != entry.get("sha256"):
+            raise ValueError(f"Quarterly data SHA-256 differs from quarterly-sources.json: {path.name}.")
+        extracts[key] = path
+
+    quarterly = pd.read_csv(extracts["quarterly_extract"], dtype={"quarter": str})
+    work_in_progress = pd.read_csv(extracts["work_in_progress_extract"], dtype={"Quarter": str})
+    if list(quarterly.columns) != QUARTERLY_COLUMNS:
+        raise ValueError("The quarterly extract has unexpected or missing columns.")
+    if not {"Quarter", "period_end", "Total Work In Progress"}.issubset(work_in_progress.columns):
+        raise ValueError("The ASY_03 extract is missing its quarter, date or total work-in-progress column.")
+    return quarterly, work_in_progress
+
+
+def validate_quarterly_data(tables, quarterly, work_in_progress):
+    expected_quarters = [f"{year} Q{quarter}" for year in range(2010, 2027)
+                         for quarter in range(1, 5) if year < 2026 or quarter <= 2]
+    if quarterly["quarter"].tolist() != expected_quarters:
+        raise ValueError("The quarterly extract must cover each quarter from 2010 Q1 through 2026 Q2.")
+    if quarterly["substantive_decisions"].ne(quarterly["grants"] + quarterly["refusals"]).any():
+        raise ValueError("Quarterly substantive decisions do not equal grants plus refusals.")
+    if quarterly["asylum_related_returns"].ne(
+        quarterly["enforced_returns"] + quarterly["voluntary_returns"]
+    ).any():
+        raise ValueError("Quarterly asylum-related returns must exclude refused-entry departures.")
+    if pd.notna(quarterly["people_awaiting_initial_decision"].iloc[0]):
+        raise ValueError("The quarterly stock series should start in 2010 Q2, not 2010 Q1.")
+    if quarterly["people_awaiting_initial_decision"].iloc[1:].isna().any():
+        raise ValueError("The pending-stock workbook is missing one or more quarterly observations.")
+
+    flows = tables["Asy_00a"]
+    measures = {
+        "claims": "People claiming asylum",
+        "substantive_decisions": "People receiving initial decisions",
+        "grants": "Grants of protection or other leave",
+        "refusals": "Refusals",
+        "withdrawals": "Withdrawals",
+        "enforced_returns": "Enforced",
+        "voluntary_returns": "Voluntary",
+        "asylum_related_returns": "Asylum-related returns",
+    }
+    years = quarterly["quarter"].str[:4].astype(int)
+    for year in range(2010, 2026):
+        annual = quarterly.loc[years == year]
+        for measure, label in measures.items():
+            actual = int(annual[measure].sum())
+            expected = int(value_for(flows, label, str(year)))
+            if actual != expected:
+                raise ValueError(f"Quarterly {measure} does not reconcile to Asy_00a in {year}.")
+
+    latest = quarterly.loc[quarterly["quarter"].isin(
+        ["2025 Q3", "2025 Q4", "2026 Q1", "2026 Q2"]
+    )]
+    if len(latest) != 4:
+        raise ValueError("The quarterly extract is missing a period in the year ending June 2026.")
+    for measure, label in measures.items():
+        actual = int(latest[measure].sum())
+        expected = int(value_for(flows, label, "Year ending June 2026"))
+        if actual != expected:
+            raise ValueError(f"Quarterly {measure} does not reconcile to the June 2026 rolling year.")
+
+    latest_stock = quarterly.loc[quarterly["quarter"] == "2026 Q2", "people_awaiting_initial_decision"]
+    expected_stock = int(value_for(flows, "People awaiting an initial decision", "Year ending June 2026"))
+    if latest_stock.empty or int(latest_stock.iloc[0]) != expected_stock:
+        raise ValueError("Quarterly stock does not reconcile to the June 2026 Asy_00a headline.")
+
+    expected_wip_quarters = [f"{year} Q2" for year in range(2011, 2025)]
+    if work_in_progress["Quarter"].tolist() != expected_wip_quarters:
+        raise ValueError("ASY_03 must contain its June snapshots from 2011 through 2024.")
+    latest_wip = work_in_progress.loc[
+        work_in_progress["Quarter"] == "2024 Q2", "Total Work In Progress"
+    ]
+    if latest_wip.empty or int(latest_wip.iloc[0]) != 224742:
+        raise ValueError("ASY_03 must report 224,742 work-in-progress cases in June 2024.")
+
+
+def quarterly_flows_with_rolling_returns(quarterly):
+    result = quarterly.copy()
+    result["rolling_12m_returns"] = result["asylum_related_returns"].rolling(4, min_periods=4).sum()
+    return result
+
+
 def validate_tables(tables):
     flows = tables["Asy_00a"]
     years = [str(year) for year in range(2010, 2026)]
@@ -237,8 +333,11 @@ def latest_summary(tables):
     return {key: optional_value(flows, label, column) for key, label in labels.items()}
 
 
-def make_headlines(metadata, tables):
+def make_headlines(metadata, tables, quarterly, work_in_progress):
     small_boat = tables["Asy_02d"]
+    quarter_flows = quarterly_flows_with_rolling_returns(quarterly)
+    latest_quarter = quarter_flows.iloc[-1]
+    latest_work_in_progress = work_in_progress.iloc[-1]
     return {
         "source": metadata,
         "release": "Year ending June 2026",
@@ -251,6 +350,16 @@ def make_headlines(metadata, tables):
         "small_boat_case_grant_rates": {
             "year_ending_june_2025": value_for(small_boat, "All nationalities", "Grant rate - year ending June 2025 (cases)"),
             "year_ending_june_2026": value_for(small_boat, "All nationalities", "Grant rate - year ending June 2026 (cases)"),
+        },
+        "returns_and_stock": {
+            "latest_quarter": latest_quarter["quarter"],
+            "quarterly_claims": int(latest_quarter["claims"]),
+            "quarterly_substantive_decisions": int(latest_quarter["substantive_decisions"]),
+            "quarterly_asylum_related_returns": int(latest_quarter["asylum_related_returns"]),
+            "rolling_12_month_asylum_related_returns": int(latest_quarter["rolling_12m_returns"]),
+            "people_awaiting_initial_decision": int(latest_quarter["people_awaiting_initial_decision"]),
+            "total_work_in_progress_cases": int(latest_work_in_progress["Total Work In Progress"]),
+            "work_in_progress_quarter": latest_work_in_progress["Quarter"],
         },
     }
 
@@ -400,9 +509,66 @@ def chart_support(tables):
     save_chart(fig, "asylum-support")
 
 
-def write_outputs(metadata, tables):
+def style_quarter_axis(ax, start, end):
+    years = list(range(2010, 2027, 4))
+    ax.set_xticks([pd.Timestamp(year=year, month=1, day=1) for year in years])
+    ax.set_xticklabels([str(year) for year in years])
+    ax.set_xlim(pd.Timestamp(start), pd.Timestamp(end))
+    ax.spines[["top", "right", "left"]].set_visible(False)
+    ax.spines["bottom"].set_color(GRID)
+    ax.tick_params(axis="both", colors=MUTED, labelsize=9, length=0, pad=7)
+    ax.grid(axis="y", color=GRID, linewidth=.8)
+    ax.set_axisbelow(True)
+
+
+def chart_quarterly_flows(quarterly):
+    data = quarterly.copy()
+    dates = pd.to_datetime(data["period_end"])
+    fig, ax = plt.subplots(figsize=(11, 4.8), layout="constrained")
+    ax.plot(dates, data["claims"], color=TEAL, linewidth=2.3, marker="o", markersize=2.5,
+            label="People claiming asylum")
+    ax.plot(dates, data["substantive_decisions"], color=GOLD, linewidth=2.3, marker="o", markersize=2.5,
+            label="Substantive initial decisions")
+    ax.plot(dates, data["asylum_related_returns"], color=PURPLE, linewidth=1.9, marker="o", markersize=2.2,
+            label="Asylum-related returns")
+    ax.set_ylim(bottom=0)
+    ax.set_ylabel("People or recorded returns", color=MUTED)
+    format_count_axis(ax.yaxis, max(data["claims"].max(), data["substantive_decisions"].max()))
+    ax.set_title("Quarterly asylum claims, decisions and returns", loc="left", color=INK, fontsize=15, pad=14)
+    style_quarter_axis(ax, "2010-01-01", "2026-06-30")
+    ax.legend(frameon=False, loc="upper left", ncol=1, fontsize=9)
+    save_chart(fig, "quarterly-flows-returns")
+
+
+def chart_stock_and_returns(quarterly, work_in_progress):
+    data = quarterly_flows_with_rolling_returns(quarterly)
+    stock = data.dropna(subset=["people_awaiting_initial_decision"])
+    returns = data.dropna(subset=["rolling_12m_returns"])
+    wip = work_in_progress.dropna(subset=["Total Work In Progress"])
+    stock_dates = pd.to_datetime(stock["period_end"])
+    return_dates = pd.to_datetime(returns["period_end"])
+    wip_dates = pd.to_datetime(wip["period_end"])
+    fig, ax = plt.subplots(figsize=(11, 4.8), layout="constrained")
+    ax.plot(stock_dates, stock["people_awaiting_initial_decision"], color=TEAL, linewidth=2.5,
+            label="Awaiting initial decision (people)")
+    ax.plot(wip_dates, wip["Total Work In Progress"], color=GOLD, linewidth=2.2, marker="o",
+            markersize=4, label="Total work in progress (main-applicant cases)")
+    ax.plot(return_dates, returns["rolling_12m_returns"], color=PURPLE, linewidth=2.2,
+            label="Asylum-related returns in previous 12 months")
+    ax.set_ylim(bottom=0)
+    maximum = max(stock["people_awaiting_initial_decision"].max(),
+                  wip["Total Work In Progress"].max(), returns["rolling_12m_returns"].max())
+    format_count_axis(ax.yaxis, maximum)
+    ax.set_ylabel("People, cases or returns", color=MUTED)
+    ax.set_title("Waiting stocks and returns over time", loc="left", color=INK, fontsize=15, pad=14)
+    style_quarter_axis(ax, "2010-01-01", "2026-06-30")
+    ax.legend(frameon=False, loc="upper left", fontsize=8.5)
+    save_chart(fig, "stock-vs-returns")
+
+
+def write_outputs(metadata, tables, quarterly, work_in_progress):
     DERIVED.mkdir(parents=True, exist_ok=True)
-    headlines = make_headlines(metadata, tables)
+    headlines = make_headlines(metadata, tables, quarterly, work_in_progress)
     (DERIVED / "tables.json").write_text(
         json.dumps({"source": metadata, "tables": tables}, indent=2, allow_nan=False) + "\n",
         encoding="utf-8",
@@ -423,18 +589,25 @@ def write_outputs(metadata, tables):
     pd.DataFrame([{"measure": key, "value": value} for key, value in latest.items()]).to_csv(
         DERIVED / "year-ending-june-2026.csv", index=False
     )
+    quarterly_flows_with_rolling_returns(quarterly).to_csv(
+        DERIVED / "quarterly-flows.csv", index=False, lineterminator="\n", na_rep=""
+    )
     chart_annual_flows(tables)
     chart_grant_rates(tables)
     chart_small_boat_rates(tables)
     chart_waiting_times(tables)
     chart_support(tables)
+    chart_quarterly_flows(quarterly)
+    chart_stock_and_returns(quarterly, work_in_progress)
 
 
 def main():
     metadata, tables = load_tables()
     validate_tables(tables)
-    write_outputs(metadata, tables)
-    print("Parsed 18 Home Office tables; source fingerprint, calendar coverage and key totals validated.")
+    quarterly, work_in_progress = load_quarterly_data()
+    validate_quarterly_data(tables, quarterly, work_in_progress)
+    write_outputs(metadata, tables, quarterly, work_in_progress)
+    print("Parsed 18 summary tables and pinned quarterly data; source fingerprints and reconciliations validated.")
 
 
 if __name__ == "__main__":

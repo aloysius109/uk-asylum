@@ -11,11 +11,15 @@ from analyze import (  # noqa: E402
     cell_value,
     format_count,
     header_text,
+    load_quarterly_data,
     load_tables,
     parse_table,
+    quarterly_flows_with_rolling_returns,
+    validate_quarterly_data,
     validate_tables,
     value_for,
 )
+from prepare_quarterly import count_value  # noqa: E402
 
 
 def test_count_axis_labels_use_separators_or_k_when_the_scale_warrants_it():
@@ -28,6 +32,12 @@ def test_count_axis_labels_use_separators_or_k_when_the_scale_warrants_it():
     assert format_count(0, 20_000) == "0"
     assert format_count(20_000, 20_000) == "20K"
     assert format_count(125_000, 125_000) == "125K"
+
+
+def test_suppressed_quarterly_source_markers_remain_missing():
+    assert count_value(":") is None
+    assert count_value("-") is None
+    assert count_value(0) == 0
 
 
 def test_suppressed_values_stay_missing_and_year_headers_are_normalised():
@@ -55,6 +65,24 @@ def test_core_totals_and_main_applicant_rate_match_the_saved_release():
     assert round(value_for(tables["Asy_00a"], "Grant rate at initial decision", "Year ending June 2026"), 3) == 0.381
     assert value_for(tables["Asy_01c"], "Small Boat", "Year ending June 2026") == 33949
     assert value_for(tables["Asy_01d"], "Total", "Small Boat") == 33949
+
+
+def test_quarterly_flows_and_stock_reconcile_to_summary_and_preserve_units():
+    _, tables = load_tables()
+    quarterly, work_in_progress = load_quarterly_data()
+    validate_quarterly_data(tables, quarterly, work_in_progress)
+    flows = quarterly_flows_with_rolling_returns(quarterly)
+    latest = flows.iloc[-1]
+    assert len(quarterly) == 66
+    assert latest["quarter"] == "2026 Q2"
+    assert latest["claims"] == 17233
+    assert latest["substantive_decisions"] == 19079
+    assert latest["asylum_related_returns"] == 3157
+    assert latest["rolling_12m_returns"] == 12568
+    assert latest["people_awaiting_initial_decision"] == 40168
+    assert work_in_progress.loc[
+        work_in_progress["Quarter"] == "2024 Q2", "Total Work In Progress"
+    ].iloc[0] == 224742
 
 
 def test_small_boat_case_rate_is_not_a_people_rate():
