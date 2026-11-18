@@ -13,9 +13,15 @@ website:
   title: "UK asylum, in detail"
   description: "A Home Office data-led report on UK asylum claims, routes, decisions, waiting times and support, using the year ending June 2026 summary tables."
   site-url: "https://aloysius109.github.io/uk-asylum/"
+  image: "https://aloysius109.github.io/assets/og/uk-asylum.png"
+  open-graph:
+    image-width: 1200
+    image-height: 630
+  twitter-card:
+    card-style: summary_large_image
   navbar: false
   page-footer:
-    left: "Kathryn Hopkins · UK asylum statistics"
+    left: "[Kathryn Hopkins](https://aloysius109.github.io/) · UK asylum statistics"
     right: "Home Office tables · Year ending June 2026"
 format:
   html:
@@ -23,6 +29,7 @@ format:
     css: styles.css
     include-in-header: head-social.html
     include-after-body: analytics.html
+    canonical-url: true
     toc: true
     toc-depth: 2
     smooth-scroll: true

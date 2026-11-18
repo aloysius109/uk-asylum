@@ -4,6 +4,8 @@ A reproducible UK report built from the Home Office asylum summary tables, year 
 
 The report is intentionally separate from [Asylum Tracker](https://github.com/aloysius109/asylum-tracker), which combines global UNHCR analysis with a shorter UK comparison. This project focuses on the wider Home Office summary tables.
 
+Published report: <https://aloysius109.github.io/uk-asylum/>.
+
 ## Source edition
 
 The source workbook is vendored at `data/raw/asylum-summary-jun-2026.ods`. `data/raw/source.json` records its Home Office URL, retrieval time and SHA-256. The analysis verifies that fingerprint and never downloads or replaces the accepted workbook during rendering.
