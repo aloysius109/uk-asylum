@@ -5,6 +5,8 @@ description: "A descriptive report on UK asylum statistics from the Home Office 
 author: Kathryn Hopkins
 date: 2026-11-18
 date-format: "D MMMM YYYY"
+image: "https://aloysius109.github.io/assets/og/uk-asylum.png"
+image-alt: "UK asylum, in detail: Home Office statistics for the year ending June 2026."
 format:
   html:
     title-block-banner: false
