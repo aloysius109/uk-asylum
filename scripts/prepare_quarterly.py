@@ -240,10 +240,15 @@ def parse_work_in_progress(path):
     )
     if header_index is None:
         raise ValueError("Could not find the ASY_03 quarter header in the transparency workbook.")
-    columns = [str(value).strip() if pd.notna(value) else "" for value in raw.iloc[header_index]]
-    if "Total Work In Progress" not in columns:
+    columns = [
+        (index, str(value).strip())
+        for index, value in enumerate(raw.iloc[header_index])
+        if pd.notna(value) and str(value).strip()
+    ]
+    column_names = [name for _, name in columns]
+    if "Total Work In Progress" not in column_names:
         raise ValueError("The ASY_03 workbook no longer has a Total Work In Progress column.")
-    if len(set(columns)) != len(columns):
+    if len(set(column_names)) != len(column_names):
         raise ValueError("The ASY_03 workbook contains duplicate column headings.")
     rows = []
     for _, row in raw.iloc[header_index + 1:].iterrows():
@@ -251,7 +256,9 @@ def parse_work_in_progress(path):
         if not pd.notna(row.iloc[0]) or not re.fullmatch(r"20\d{2} Q[1-4]", quarter):
             continue
         output = {"Quarter": quarter, "period_end": quarter_end(quarter)}
-        for index, column in enumerate(columns[1:], start=1):
+        for index, column in columns:
+            if index == 0:
+                continue
             output[column] = count_value(row.iloc[index])
         rows.append(output)
     if not rows:

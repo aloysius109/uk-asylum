@@ -74,6 +74,14 @@
     "total_work_in_progress_cases": 224742,
     "work_in_progress_quarter": "2024 Q2"
   },
+  "work_in_progress": {
+    "latest_quarter": "2024 Q2",
+    "total_cases": 224742,
+    "awaiting_initial_decision_cases": 87217,
+    "awaiting_initial_decision_share": 0.3880761050448959,
+    "not_awaiting_initial_decision_cases": 137525,
+    "not_awaiting_initial_decision_share": 0.611923894955104
+  },
   "hotel_accommodation": {
     "peak_quarter": "2023 Q3",
     "peak_people": 56018,

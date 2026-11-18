@@ -25,7 +25,7 @@ from analyze import (
     validate_tables,
     value_for,
 )
-from prepare_quarterly import count_value  # noqa: E402
+from prepare_quarterly import count_value, parse_work_in_progress  # noqa: E402
 
 
 def test_count_axis_labels_use_separators_or_k_when_the_scale_warrants_it():
@@ -63,6 +63,7 @@ def test_all_chart_legends_are_outside_the_plot_area(monkeypatch):
         analyze.chart_hotel_regions(support)
         analyze.chart_quarterly_flows(quarterly)
         analyze.chart_quarterly_decision_outcomes(quarterly)
+        analyze.chart_work_in_progress_stages(work_in_progress)
         analyze.chart_stock_and_returns(quarterly, work_in_progress)
 
         assert {name for name, _ in rendered} == {
@@ -70,7 +71,7 @@ def test_all_chart_legends_are_outside_the_plot_area(monkeypatch):
             "grant-types", "children-decisions", "uasc-grant-rate", "age-assessments",
             "annual-claims-decisions", "small-boat-grant-rates", "waiting-times",
             "hotel-accommodation", "hotel-by-region", "quarterly-flows-returns",
-            "quarterly-claims-outcomes", "stock-vs-returns",
+            "quarterly-claims-outcomes", "work-in-progress-stages", "stock-vs-returns",
         }
         for name, fig in rendered:
             fig.canvas.draw()
@@ -184,6 +185,41 @@ def test_quarterly_flows_and_stock_reconcile_to_summary_and_preserve_units():
     assert work_in_progress.loc[
         work_in_progress["Quarter"] == "2024 Q2", "Total Work In Progress"
     ].iloc[0] == 224742
+
+
+def test_work_in_progress_stages_show_latest_split_and_earlier_bounds():
+    _, tables = load_tables()
+    quarterly, work_in_progress = load_quarterly_data()
+    validate_quarterly_data(tables, quarterly, work_in_progress)
+    stages = analyze.work_in_progress_stages(work_in_progress).set_index("Quarter")
+
+    latest = stages.loc["2024 Q2"]
+    assert latest["Total Work In Progress"] == 224742
+    assert latest["Awaiting Initial Asylum Decision"] == 87217
+    assert latest["not_awaiting"] == 137525
+    assert round(latest["not_awaiting_share"] * 100, 1) == 61.2
+    assert pd.isna(latest["decided_excluding_on_hold"])
+
+    earlier = stages.loc["2023 Q2"]
+    assert earlier["Total Work In Progress"] == 215518
+    assert earlier["not_awaiting"] == 77384
+    assert earlier["decided_excluding_on_hold"] == 63097
+    assert earlier["On Hold"] == 14287
+
+
+def test_work_in_progress_parser_discards_values_under_blank_headers(monkeypatch):
+    raw = pd.DataFrame([
+        ["Quarter", None, "Total Work In Progress", "Awaiting Initial Asylum Decision"],
+        ["2024 Q2", "24,25", 224742, 87217],
+    ])
+    monkeypatch.setattr(analyze.pd, "read_excel", lambda *args, **kwargs: raw)
+    parsed = parse_work_in_progress("not-opened.xlsx")
+
+    assert parsed.columns.tolist() == [
+        "Quarter", "period_end", "Total Work In Progress", "Awaiting Initial Asylum Decision",
+    ]
+    assert parsed.loc[0, "Total Work In Progress"] == 224742
+    assert "2425" not in parsed.columns
 
 
 def test_quarterly_hotel_series_section_98_and_regional_breakdown_reconcile():

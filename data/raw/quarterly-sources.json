@@ -38,7 +38,7 @@
   },
   "work_in_progress_extract": {
     "file": "asylum-work-in-progress.csv",
-    "sha256": "6e64fdf4bd2f8374a36f120ae991a7293844f3dd3497c1404368e91afa4e5d80"
+    "sha256": "53c08318fbd05c37f6ad05af784a3c109cfa3f0892dac83ce79f5bdd925ab159"
   },
   "support_extract": {
     "file": "support-accommodation-extract.csv",

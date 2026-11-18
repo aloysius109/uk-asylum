@@ -26,6 +26,10 @@ QUARTERLY_COLUMNS = [
 SUPPORT_COLUMNS = [
     "quarter", "period_end", "support_type", "accommodation_type", "uk_region", "people",
 ]
+WIP_STAGE_COLUMNS = [
+    "Awaiting Initial Asylum Decision", "Post Decision", "Asylum Appeal Outstanding",
+    "Subject to Removal Action", "On Hold", "Further Leave Application Outstanding",
+]
 
 SHEETS = {
     "Asy_00a": "Date / As at the end of...",
@@ -200,8 +204,9 @@ def load_quarterly_data():
     work_in_progress = pd.read_csv(extracts["work_in_progress_extract"], dtype={"Quarter": str})
     if list(quarterly.columns) != QUARTERLY_COLUMNS:
         raise ValueError("The quarterly extract has unexpected or missing columns.")
-    if not {"Quarter", "period_end", "Total Work In Progress"}.issubset(work_in_progress.columns):
-        raise ValueError("The ASY_03 extract is missing its quarter, date or total work-in-progress column.")
+    required_wip_columns = {"Quarter", "period_end", "Total Work In Progress", *WIP_STAGE_COLUMNS}
+    if not required_wip_columns.issubset(work_in_progress.columns):
+        raise ValueError("The ASY_03 extract is missing its quarter, date, total or stage columns.")
     return quarterly, work_in_progress
 
 
@@ -282,6 +287,37 @@ def validate_quarterly_data(tables, quarterly, work_in_progress):
     ]
     if latest_wip.empty or int(latest_wip.iloc[0]) != 224742:
         raise ValueError("ASY_03 must report 224,742 work-in-progress cases in June 2024.")
+    stage_totals = work_in_progress[WIP_STAGE_COLUMNS].fillna(0).sum(axis=1)
+    if stage_totals.ne(work_in_progress["Total Work In Progress"]).any():
+        raise ValueError("ASY_03 stage counts do not reconcile to total work in progress.")
+    latest_wip_stages = work_in_progress.loc[work_in_progress["Quarter"] == "2024 Q2"].iloc[0]
+    if (int(latest_wip_stages["Awaiting Initial Asylum Decision"]) != 87217
+            or int(latest_wip_stages["Post Decision"]) != 137525):
+        raise ValueError("ASY_03 June 2024 initial-decision stages changed from the published split.")
+
+
+def work_in_progress_stages(work_in_progress):
+    result = work_in_progress.copy()
+    total = result["Total Work In Progress"]
+    awaiting = result["Awaiting Initial Asylum Decision"]
+    result["not_awaiting"] = total - awaiting
+    result["not_awaiting_share"] = result["not_awaiting"] / total
+
+    decided_columns = [
+        "Post Decision", "Asylum Appeal Outstanding", "Subject to Removal Action",
+        "Further Leave Application Outstanding",
+    ]
+    result["decided_excluding_on_hold"] = result[decided_columns].fillna(0).sum(axis=1).astype("Int64")
+    no_breakdown = (
+        result[decided_columns].notna().sum(axis=1).eq(1)
+        & result["Post Decision"].notna()
+        & result["Post Decision"].eq(result["not_awaiting"])
+    )
+    result.loc[no_breakdown, "decided_excluding_on_hold"] = pd.NA
+    result["decided_excluding_on_hold_share"] = (
+        result["decided_excluding_on_hold"] / total
+    )
+    return result
 
 
 def quarterly_flows_with_rolling_returns(quarterly):
@@ -556,6 +592,7 @@ def make_headlines(metadata, tables, quarterly, work_in_progress, support):
     quarter_flows = quarterly_flows_with_rolling_returns(quarterly)
     latest_quarter = quarter_flows.iloc[-1]
     latest_work_in_progress = work_in_progress.iloc[-1]
+    latest_wip_stages = work_in_progress_stages(work_in_progress).iloc[-1]
     accommodations = support_series(support)
     hotel_series = accommodations.dropna(subset=["hotel"])
     peak_hotel = hotel_series.loc[hotel_series["hotel"].idxmax()]
@@ -624,6 +661,17 @@ def make_headlines(metadata, tables, quarterly, work_in_progress, support):
             "people_awaiting_initial_decision": int(latest_quarter["people_awaiting_initial_decision"]),
             "total_work_in_progress_cases": int(latest_work_in_progress["Total Work In Progress"]),
             "work_in_progress_quarter": latest_work_in_progress["Quarter"],
+        },
+        "work_in_progress": {
+            "latest_quarter": latest_wip_stages["Quarter"],
+            "total_cases": int(latest_wip_stages["Total Work In Progress"]),
+            "awaiting_initial_decision_cases": int(latest_wip_stages["Awaiting Initial Asylum Decision"]),
+            "awaiting_initial_decision_share": float(
+                latest_wip_stages["Awaiting Initial Asylum Decision"]
+                / latest_wip_stages["Total Work In Progress"]
+            ),
+            "not_awaiting_initial_decision_cases": int(latest_wip_stages["not_awaiting"]),
+            "not_awaiting_initial_decision_share": float(latest_wip_stages["not_awaiting_share"]),
         },
         "hotel_accommodation": {
             "peak_quarter": peak_hotel["quarter"],
@@ -1133,6 +1181,63 @@ def chart_quarterly_decision_outcomes(quarterly):
     save_chart(fig, "quarterly-claims-outcomes")
 
 
+def chart_work_in_progress_stages(work_in_progress):
+    data = work_in_progress_stages(work_in_progress)
+    positions = list(range(len(data)))
+    bottom = [0] * len(data)
+    categories = [
+        ("Awaiting Initial Asylum Decision", TEAL, "Awaiting initial decision"),
+        ("Post Decision", PURPLE, "Post-decision component"),
+        ("Asylum Appeal Outstanding", "#80a99b", "Appeal outstanding"),
+        ("Subject to Removal Action", GOLD, "Subject to removal action"),
+        ("On Hold", MUTED, "On hold (decision status may vary)"),
+        ("Further Leave Application Outstanding", "#b95f4b", "Further leave application"),
+    ]
+    fig, ax = plt.subplots(figsize=(11.5, 6), layout="constrained")
+    undivided = (
+        data["Post Decision"].notna()
+        & data["decided_excluding_on_hold"].isna()
+    )
+    for column, color, label in categories:
+        values = data[column].fillna(0).astype(int).tolist()
+        if column == "Post Decision":
+            values = [0 if is_undivided else value for value, is_undivided in zip(values, undivided)]
+        kwargs = {"hatch": "///", "edgecolor": "white", "linewidth": .4} if column == "On Hold" else {}
+        ax.bar(positions, values, bottom=bottom, color=color, width=.72, label=label, **kwargs)
+        bottom = [current + value for current, value in zip(bottom, values)]
+
+    undivided_values = [
+        int(value) if is_undivided else 0
+        for value, is_undivided in zip(data["Post Decision"].fillna(0), undivided)
+    ]
+    ax.bar(
+        positions, undivided_values, bottom=bottom, color="#e7e2d9", edgecolor=GOLD,
+        hatch="///", linewidth=.5, width=.72, label="2024 post-decision total (no breakdown)",
+    )
+    totals = data["Total Work In Progress"].astype(int).tolist()
+    shares = data["not_awaiting_share"].tolist()
+    for position, total, share in zip(positions, totals, shares):
+        ax.text(position, total + max(totals) * .012, f"{share:.0%}", ha="center", va="bottom",
+                fontsize=8, color=MUTED)
+
+    ax.axvline(2.5, color=MUTED, linewidth=1.2, linestyle=":")
+    ax.annotate(
+        "2014 methodology break", xy=(2.5, .98), xycoords=("data", "axes fraction"),
+        xytext=(5, -4), textcoords="offset points", rotation=90, ha="left", va="top",
+        fontsize=8, color=MUTED,
+    )
+    ax.set_xticks(positions, data["Quarter"].str[:4])
+    ax.set_xlim(-.6, len(data) - .4)
+    ax.set_ylim(0, max(totals) * 1.12)
+    ax.set_ylabel("Main-applicant cases", color=MUTED)
+    format_count_axis(ax.yaxis, max(totals))
+    ax.set_title("Work-in-progress cases by published stage", loc="left", color=INK, fontsize=15, pad=14)
+    style_axis(ax)
+    ax.tick_params(axis="x", labelsize=8, pad=6)
+    add_legend(fig, ax, ncol=4, fontsize=7.8)
+    save_chart(fig, "work-in-progress-stages")
+
+
 def chart_stock_and_returns(quarterly, work_in_progress):
     data = quarterly_flows_with_rolling_returns(quarterly)
     stock = data.dropna(subset=["people_awaiting_initial_decision"])
@@ -1191,6 +1296,9 @@ def write_outputs(metadata, tables, quarterly, work_in_progress, support):
     hotel_region_breakdown(support).to_csv(
         DERIVED / "hotel-by-region.csv", index=False, lineterminator="\n", na_rep=""
     )
+    work_in_progress_stages(work_in_progress).to_csv(
+        DERIVED / "work-in-progress-stages.csv", index=False, lineterminator="\n", na_rep=""
+    )
     chart_claims_by_nationality(tables)
     chart_claims_by_age(tables)
     chart_claims_by_route(tables)
@@ -1208,6 +1316,7 @@ def write_outputs(metadata, tables, quarterly, work_in_progress, support):
     chart_hotel_regions(support)
     chart_quarterly_flows(quarterly)
     chart_quarterly_decision_outcomes(quarterly)
+    chart_work_in_progress_stages(work_in_progress)
     chart_stock_and_returns(quarterly, work_in_progress)
 
 

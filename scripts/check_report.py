@@ -11,6 +11,7 @@ from analyze import (
     validate_quarterly_data,
     validate_support_data,
     validate_tables,
+    work_in_progress_stages,
 )
 
 
@@ -37,6 +38,7 @@ def main():
     who_claims = headlines["who_claims"]
     decisions = headlines["decisions"]
     children = headlines["children"]
+    wip = headlines["work_in_progress"]
 
     require(annual["people_claiming_asylum"] == 101911, "Calendar 2025 claims changed from the report headline.")
     require(round(annual["published_initial_grant_rate_main_applicants"] * 100, 1) == 42.1,
@@ -94,6 +96,15 @@ def main():
             and children["age_assessments_17_and_under"] == 3512
             and children["age_assessments_18_and_over"] == 2753,
             "The year-ending-June 2026 child decision or age-assessment figures changed.")
+    stages = work_in_progress_stages(work_in_progress).set_index("Quarter")
+    require(wip["latest_quarter"] == "2024 Q2"
+            and wip["total_cases"] == 224742
+            and wip["awaiting_initial_decision_cases"] == 87217
+            and wip["not_awaiting_initial_decision_cases"] == 137525
+            and round(wip["awaiting_initial_decision_share"] * 100, 1) == 38.8
+            and round(wip["not_awaiting_initial_decision_share"] * 100, 1) == 61.2
+            and stages.loc["2023 Q2", "decided_excluding_on_hold"] == 63097,
+            "The published WIP count, stage split or earlier decision-status bound changed.")
 
     claims = [
         "101,911", "42.1%", "38.1%", "40,168", "32,401", "85,891", "115,872",
@@ -120,6 +131,10 @@ def main():
         "not a hotel count", "regardless of support eligibility", "London had the largest regional count",
         "5,487 people", "before 31 March 2023", "not counts of households or hotel rooms",
         "not be subtracted from either stock", "not a complete estimate of every asylum seeker currently in the UK",
+        "224,742 main-applicant cases", "87,217 (38.8%)", "137,525 (61.2%)",
+        "On Hold” includes people who may be either before or after a decision",
+        "The 2024 “Post Decision” segment has no further breakdown",
+        "not a current 2026 total", "different units and reporting dates",
         "2010 Q1 to 2026 Q2",
         "z", "2011 claim total in `Asy_00a` differs by six from `Asy_01a`",
     ]
@@ -135,6 +150,7 @@ def main():
         "data/raw/source.json",
         "data/derived/quarterly-flows.csv",
         "data/raw/asylum-work-in-progress.csv",
+        "data/derived/work-in-progress-stages.csv",
         "data/raw/support-accommodation-extract.csv",
         "data/derived/quarterly-support-accommodation.csv",
         "data/derived/hotel-by-region.csv",
@@ -146,7 +162,7 @@ def main():
     require(len(download) == 2, "Download section is missing.")
     content = download[1].split("\n## Related reports", 1)[0]
     links = re.findall(r"\[[^\]]+\]\(([^)]+)\)", content)
-    require(len(links) == 12, "Expected twelve reader-facing data download links.")
+    require(len(links) == 13, "Expected thirteen reader-facing data download links.")
     for link in links:
         require((ROOT / link).is_file(), f"Download target does not exist: {link}")
 
@@ -156,12 +172,12 @@ def main():
         "annual-claims-decisions.svg", "initial-grant-rates.svg", "small-boat-grant-rates.svg",
         "waiting-times.svg", "asylum-support.svg", "quarterly-flows-returns.svg",
         "quarterly-claims-outcomes.svg", "stock-vs-returns.svg",
-        "hotel-accommodation.svg", "hotel-by-region.svg",
+        "hotel-accommodation.svg", "hotel-by-region.svg", "work-in-progress-stages.svg",
     ]:
         require((ROOT / "assets" / chart).is_file(), f"Expected report chart is missing: {chart}")
         require(f"assets/{chart}" in report, f"Report does not reference its chart: {chart}")
 
-    print("Report QA passed: pinned figures, unit distinctions, eighteen charts and twelve downloads are consistent.")
+    print("Report QA passed: pinned figures, unit distinctions, nineteen charts and thirteen downloads are consistent.")
 
 
 if __name__ == "__main__":

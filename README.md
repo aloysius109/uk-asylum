@@ -1,6 +1,6 @@
 # UK asylum, in detail
 
-A reproducible UK report built from the Home Office asylum summary tables, year ending June 2026. It covers claims, age and nationality, route before claiming, decisions, small boats, inadmissibility, waiting times and backlog, cohorts, children, support and accommodation, and returns. Charts cover nationality, prior route, decisions and outcomes, children, UASC grant rates, and age assessments. `UASC` means Unaccompanied Asylum-Seeking Child.
+A reproducible UK report built from the Home Office asylum summary tables, year ending June 2026. It covers claims, age and nationality, route before claiming, decisions, small boats, inadmissibility, waiting times and backlog, cohorts, children, support and accommodation, and returns. Charts cover nationality, prior route, decisions and outcomes, children, UASC grant rates, age assessments and the wider work-in-progress queue. `UASC` means Unaccompanied Asylum-Seeking Child.
 
 The report is intentionally separate from [Asylum Tracker](https://github.com/aloysius109/asylum-tracker), which combines global UNHCR analysis with a shorter UK comparison. This project focuses on the wider Home Office summary tables.
 
@@ -12,6 +12,8 @@ The source workbook is vendored at `data/raw/asylum-summary-jun-2026.ods`. `data
 
 This edition uses the tables listed in `scripts/analyze.py`, plus quarterly extracts from the Home Office claims, pending, returns, migration-transparency and asylum-support workbooks. The support extract comes from `Data_Asy_D09` in the asylum seekers in receipt of support dataset and includes quarterly accommodation counts by support type and UK region/nation. `data/raw/quarterly-sources.json` records the workbook URLs and hashes and pins the committed CSV extracts. The workbooks are cached under the ignored `data/raw/cache/` directory; rendering and CI use only the committed CSVs and do not download data.
 
+The ASY_03 work-in-progress queue counts main-applicant cases, not people. Its latest published total is 224,742 cases at June 2024; the report shows the published initial-decision split and the limits of interpreting “On Hold” cases. Do not subtract the separate people-awaiting-initial-decision figure from this case count.
+
 The analysis keeps calendar-year, rolling-year and quarterly periods separate, preserves missing or suppressed values as missing, and retains the source’s case/person distinctions. The main initial grant rate is for main applicants: grants of protection or other leave divided by substantive initial decisions (grants plus refusals), excluding withdrawals and administrative outcomes. The small-boat nationality rates are case-based. The 2011 claim totals in `Asy_00a` and `Asy_01a` differ by six and are not artificially reconciled.
 
 The workbook’s appeals series ends in March 2023 and is not included as a report chapter. Prior-route data are Official Statistics in Development. The Home Office says the `Asy_03b` and `Asy_03c` tables will be discontinued after this release.
@@ -21,6 +23,8 @@ The workbook’s appeals series ends in March 2023 and is not included as a repo
 Count axes use comma-separated numbers below 10,000 and `K` abbreviations (with a decimal only when needed) when the axis reaches 10,000 or more. The threshold is defined by `COUNT_AXIS_K_THRESHOLD` in `scripts/analyze.py`; there is no separate chart configuration file. `_quarto.yml` configures the site and its rendering, not chart tick labels.
 
 Chart legends are placed below the plot area so they do not obscure the data. `LEGEND_BORDER_PAD` in `scripts/analyze.py` keeps a clear gap between the legend and the x-axis label; a test checks that the gap is at least 14 points on every chart.
+
+The WIP stage chart keeps the Home Office’s “On Hold” category distinct because it includes cases both before and after an initial decision. The June 2024 “Post Decision” value is shown as an aggregate without a further breakdown; the derived stage series is available in `data/derived/work-in-progress-stages.csv`.
 
 ## Rebuild and check
 

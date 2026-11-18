@@ -8,6 +8,9 @@ body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-heigh
 .eyebrow{font-size:.75rem;letter-spacing:.13em;text-transform:uppercase;color:var(--teal);font-weight:700;margin:1.8rem 0}
 #quarto-document-content>p:first-of-type{font-size:1.2rem;max-width:850px;line-height:1.75}
 .metric-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin:2rem 0 3rem}
+.metric-row.wip{margin-top:-1.6rem}
+.metric-row.wip .metric-card{border-top-color:var(--gold)}
+.metric-row.wip .metric{color:#8b5a22}
 .metric-card{background:#fff;border:1px solid var(--line);border-top:4px solid var(--teal);border-radius:14px;padding:1.25rem 1.4rem;display:flex;flex-direction:column;box-shadow:0 5px 20px #20343a0a}
 .metric{font-family:var(--serif);font-size:2.6rem;line-height:1.1;color:#174e4a}
 .metric-label{font-weight:600;margin-top:.55rem;line-height:1.4}

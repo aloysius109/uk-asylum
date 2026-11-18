@@ -36,6 +36,26 @@ The Home Office recorded **101,911 people claiming asylum in calendar year 2025*
 :::
 :::
 
+:::: {.metric-row .wip}
+:::: {.metric-card}
+<span class="metric">224,742</span>
+<span class="metric-label">Cases in work in progress</span>
+<span class="metric-note">Latest published snapshot: June 2024; main-applicant cases</span>
+::::
+
+:::: {.metric-card}
+<span class="metric">137,525</span>
+<span class="metric-label">Beyond the initial-decision stage</span>
+<span class="metric-note">61.2%; published as “Post Decision”, with no further breakdown</span>
+::::
+
+:::: {.metric-card}
+<span class="metric">87,217</span>
+<span class="metric-label">Awaiting an initial decision</span>
+<span class="metric-note">38.8% of WIP cases; not the separate people count above</span>
+::::
+::::
+
 ## The overall picture
 
 Calendar-year flows and rolling years answer different questions. The 2025 calendar-year series is shown through 2025; the year ending June 2026 is reported separately, not treated as a calendar 2026 value. In that latest rolling year, 85,891 people claimed asylum and 115,872 received an initial decision. Those decisions comprised 42,394 grants of protection or other leave and 73,478 refusals.
@@ -126,6 +146,14 @@ The June 2026 headline counts **40,168 people** and **32,401 cases** awaiting an
 
 ![People awaiting an initial decision by time waited, at the latest date reported in table Asy_03a.](assets/waiting-times.svg){fig-alt="A stacked bar divides people awaiting an initial decision into four published waiting-time categories."}
 
+The wider work-in-progress (WIP) queue was **224,742 main-applicant cases** in June 2024, the latest published snapshot. The table classifies **87,217 (38.8%)** as awaiting an initial decision and **137,525 (61.2%)** as “Post Decision”. That is a useful indication of how many cases had moved beyond the initial-decision stage, not a count of cases whose asylum process was complete. The Home Office has suspended this WIP series after June 2024 (Note 26), so this is not a current 2026 total.
+
+The stage chart shows the reported split over time. Percentages above the bars are the shares not awaiting an initial decision. “On Hold” includes people who may be either before or after a decision, so from 2014 to 2023 the number definitely beyond the initial-decision stage is at least the sum of the other post-decision categories, while the not-awaiting figure is an upper bound. The 2024 “Post Decision” segment has no further breakdown. A methodology change in April 2014 also means earlier totals are not directly comparable.
+
+Do not subtract the **40,168 people** in the June 2026 initial-decision queue from the 224,742 WIP cases: these are different units and reporting dates. The figures indicate the scale of the wider queue, but do not support a precise netting-off calculation.
+
+![Work-in-progress cases by published stage in June snapshots from 2011 to 2024. The 2024 post-decision total has no further breakdown; On Hold cases may be before or after an initial decision.](assets/work-in-progress-stages.svg){fig-alt="Stacked columns show main-applicant work-in-progress cases by published stage from 2011 to 2024. The hatched 2024 segment is an aggregate post-decision count without a category breakdown, and hatched On Hold cases may be before or after a decision. Labels above bars show the percentage not awaiting an initial decision; a vertical marker identifies the 2014 methodology break."}
+
 Tables `Asy_03b` and `Asy_03c` separate pre-Nationality and Borders Act (pre-NABA) backlog claims, post-NABA backlog claims and the “flow” group of claims made on or after 28 June 2022. They show claims lodged, decisions and remaining initial-decision claims across quarterly dates. The groups have different histories and definitions; the tables should not be collapsed into a single, comparable cohort. The Home Office says these tables will be discontinued after this release, so a future edition may need a different source series.
 
 ## What happens to each year’s claims?
@@ -188,7 +216,7 @@ The lines use a common count scale to show their different magnitudes, but their
 
 This edition uses the Home Office **asylum summary tables, year ending June 2026**, published on 27 August 2026, alongside reviewed quarterly extracts from the asylum claims, pending, returns, migration-transparency and asylum-support workbooks. The summary ODS fingerprint is recorded in `data/raw/source.json`; the quarterly workbook and extract hashes are recorded in `data/raw/quarterly-sources.json`. The analysis refuses to run if the ODS or any committed quarterly extract differs from its pinned hash. Rendering the report does not download or silently replace source data.
 
-The analysis parses 18 summary tables directly and validates the quarterly flow extracts against `Asy_00a` for calendar years 2010–2025, the year ending June 2026 and the latest pending stock. Support and hotel counts are reconciled for year-end 2022–2025 and June 2026; regional hotel counts also sum to the national totals. The ASY_03 work-in-progress series ends in June 2024. Cells marked `z`, `:`, `-`, or similar source suppression or non-applicability markers remain missing; they are never converted into zero. Calendar years, rolling years and quarters remain distinct. The 2011 claim total in `Asy_00a` differs by six from `Asy_01a`; the tables retain the source figures and are not forcibly reconciled across tables.
+The analysis parses 18 summary tables directly and validates the quarterly flow extracts against `Asy_00a` for calendar years 2010–2025, the year ending June 2026 and the latest pending stock. Support and hotel counts are reconciled for year-end 2022–2025 and June 2026; regional hotel counts also sum to the national totals. ASY_03 stage counts reconcile to the total WIP count; June 2024 has only the awaiting and aggregate post-decision split, and “On Hold” is excluded from the lower-bound count of cases beyond an initial decision. The ASY_03 work-in-progress series ends in June 2024. Cells marked `z`, `:`, `-`, or similar source suppression or non-applicability markers remain missing; they are never converted into zero. Calendar years, rolling years and quarters remain distinct. The 2011 claim total in `Asy_00a` differs by six from `Asy_01a`; the tables retain the source figures and are not forcibly reconciled across tables.
 
 Count axes use comma-separated values below 10,000 and `K` abbreviations at or above that scale; this convention is implemented in `COUNT_AXIS_K_THRESHOLD` in `scripts/analyze.py`. Chart legends sit below the plot area rather than over the data, with clear space beneath the axis labels.
 
@@ -211,6 +239,7 @@ These files are derived from the pinned workbook above. The all-table CSV is a l
 - [Source URL, retrieval time and SHA-256 (JSON)](data/raw/source.json)
 - [Quarterly claims, decisions, returns and pending stock (CSV)](data/derived/quarterly-flows.csv)
 - [ASY_03 work-in-progress snapshots (CSV)](data/raw/asylum-work-in-progress.csv)
+- [ASY_03 work-in-progress stages and calculated shares (CSV)](data/derived/work-in-progress-stages.csv)
 - [Quarterly support and accommodation series (CSV)](data/derived/quarterly-support-accommodation.csv)
 - [Hotel accommodation by region or nation (CSV)](data/derived/hotel-by-region.csv)
 - [Pinned quarterly support/accommodation extract (CSV)](data/raw/support-accommodation-extract.csv)
