@@ -9,12 +9,25 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from analyze import (  # noqa: E402
     SHEETS,
     cell_value,
+    format_count,
     header_text,
     load_tables,
     parse_table,
     validate_tables,
     value_for,
 )
+
+
+def test_count_axis_labels_use_separators_or_k_when_the_scale_warrants_it():
+    assert format_count(0, 0) == "0"
+    assert format_count(950, 950) == "950"
+    assert format_count(4500, 9000) == "4,500"
+    assert format_count(9999, 9999) == "9,999"
+    assert format_count(10_000, 10_000) == "10K"
+    assert format_count(12_500, 125_000) == "12.5K"
+    assert format_count(0, 20_000) == "0"
+    assert format_count(20_000, 20_000) == "20K"
+    assert format_count(125_000, 125_000) == "125K"
 
 
 def test_suppressed_values_stay_missing_and_year_headers_are_normalised():

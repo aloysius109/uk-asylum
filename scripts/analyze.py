@@ -45,6 +45,7 @@ PURPLE = "#8574bd"
 GOLD = "#d68d38"
 MUTED = "#65767a"
 GRID = "#e2e9e4"
+COUNT_AXIS_K_THRESHOLD = 10_000
 
 
 def header_text(value):
@@ -262,26 +263,45 @@ def style_axis(ax):
     ax.set_axisbelow(True)
 
 
+def format_count(value, max_value):
+    if value == 0:
+        return "0"
+    if max_value >= COUNT_AXIS_K_THRESHOLD:
+        label = f"{value / 1000:.1f}".rstrip("0").rstrip(".")
+        return f"{label}K"
+    return f"{value:,.0f}"
+
+
+def format_count_axis(axis, max_value):
+    axis.set_major_formatter(plt.FuncFormatter(lambda value, _: format_count(value, max_value)))
+
+
 def save_chart(fig, name):
     ASSETS.mkdir(parents=True, exist_ok=True)
-    fig.savefig(ASSETS / f"{name}.svg", bbox_inches="tight", facecolor="white")
+    path = ASSETS / f"{name}.svg"
+    fig.savefig(path, bbox_inches="tight", facecolor="white")
     plt.close(fig)
+    svg = path.read_text(encoding="utf-8")
+    path.write_text("\n".join(line.rstrip() for line in svg.splitlines()) + "\n", encoding="utf-8")
 
 
 def chart_annual_flows(tables):
     table = tables["Asy_00a"]
     years = list(range(2010, 2026))
     fig, ax = plt.subplots(figsize=(10.5, 4.7), layout="constrained")
+    all_values = []
     for label, colour, row in [
         ("People claiming asylum", TEAL, "People claiming asylum"),
         ("People receiving initial decisions", GOLD, "People receiving initial decisions"),
     ]:
         values = [value_for(table, row, str(year)) for year in years]
+        all_values.extend(values)
         ax.plot(years, values, color=colour, linewidth=2.6, marker="o", markersize=3, label=label)
     ax.set_xticks([2010, 2015, 2020, 2025])
     ax.set_xlim(2009.5, 2025.5)
     ax.set_ylim(bottom=0)
     ax.set_ylabel("People", color=MUTED)
+    format_count_axis(ax.yaxis, max(all_values))
     ax.set_title("Asylum claims and initial decisions", loc="left", color=INK, fontsize=15, pad=14)
     style_axis(ax)
     ax.legend(frameon=False, loc="upper left", fontsize=9)
@@ -299,7 +319,7 @@ def chart_grant_rates(tables):
     ax.set_ylim(0, 1)
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda value, _: f"{value:.0%}"))
     ax.set_title("Published initial grant rate", loc="left", color=INK, fontsize=15, pad=14)
-    ax.set_ylabel("Main applicants", color=MUTED)
+    ax.set_ylabel("Share of substantive initial decisions (main applicants)", color=MUTED)
     style_axis(ax)
     save_chart(fig, "initial-grant-rates")
 
@@ -349,6 +369,7 @@ def chart_waiting_times(tables):
         left += value
     ax.set_yticks([])
     ax.set_xlabel("People awaiting an initial decision", color=MUTED)
+    format_count_axis(ax.xaxis, sum(values))
     ax.set_title(f"Waiting time at {latest_column}", loc="left", color=INK, fontsize=15, pad=14)
     ax.xaxis.grid(True, color=GRID, linewidth=.8)
     ax.yaxis.grid(False)
@@ -373,6 +394,7 @@ def chart_support(tables):
     ax.set_xticks(ticks, [pairs[index][0] for index in ticks], rotation=30, ha="right")
     ax.set_ylim(bottom=0)
     ax.set_ylabel("People", color=MUTED)
+    format_count_axis(ax.yaxis, max(value for _, value in pairs))
     ax.set_title("People receiving asylum support", loc="left", color=INK, fontsize=15, pad=14)
     style_axis(ax)
     save_chart(fig, "asylum-support")

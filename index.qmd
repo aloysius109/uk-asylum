@@ -60,6 +60,14 @@ Table `Asy_01d` cross-tabulates nationality with prior route for the year ending
 
 The initial-decision count is an event flow; a decision in one year may concern a claim made earlier. Tables `Asy_02a` and `Asy_02b` show grant types and decisions involving children and UASC. The outcome categories include protection, other leave, refusal and, in the supplementary tables, withdrawal and administrative outcomes. These definitions are not interchangeable with “grant” alone.
 
+::: {.callout-note}
+### How the grant rate is calculated
+
+The Home Office defines the initial grant rate for **main applicants** as the share of substantive initial decisions that resulted in a grant of protection or other leave. The denominator is grants plus refusals—not all applications or all recorded outcomes—and excludes withdrawals and administrative outcomes. The Home Office records **16,265 withdrawals** separately in `Asy_00a` for the year ending June 2026; they are not added to this denominator. [See the Home Office definition](https://www.gov.uk/government/statistics/immigration-system-statistics-year-ending-june-2026/how-many-people-are-granted-asylum-in-the-uk).
+
+This is distinct from the UNHCR all-decision outcome shares in [Asylum Tracker](https://aloysius109.github.io/asylum-tracker/asylum/grants.html), where “otherwise closed” outcomes are included in the denominator. Asylum Tracker’s separate refugee-recognition and total-protection rates use substantive decisions and exclude closures; its total-protection rate is the closer comparison to the Home Office numerator, though the sources and units differ. The published small-boat rates in `Asy_02d` and cohort rates in `Asy_04` also exclude withdrawals and administrative outcomes, but use cases and claim cohorts respectively rather than the main-applicant population.
+:::
+
 The main published initial grant rate shown above is for main applicants. Table `Asy_00a` also reports people receiving decisions, while the small-boat nationality rates in `Asy_02d` use **cases**. The table’s case-based rates should not be compared directly with people-based counts or described as a main-applicant rate.
 
 The detailed outcome table `Asy_02c` compares cases and people in the years ending June 2025 and June 2026. Its total includes multiple types of outcomes, not only grants and refusals. The downloadable workbook-derived tables retain the source’s own units and categories.
@@ -117,6 +125,8 @@ Table `Asy_00a` includes asylum-related returns and separate enforced and volunt
 This edition uses the Home Office **asylum summary tables, year ending June 2026**, published on 27 August 2026. The saved Open Document Spreadsheet (ODS) is the analysis input. Its SHA-256 fingerprint and retrieval timestamp are recorded in `data/raw/source.json`; the analysis refuses to run if the workbook does not match that fingerprint. Rendering the report does not download or silently replace source data.
 
 The analysis parses 18 summary tables directly. Cells marked `z`, `:`, or similar source suppression or non-applicability markers remain missing; they are never converted into zero. Calendar years and rolling year-ending-June periods remain distinct. The 2011 claim total in `Asy_00a` differs by six from `Asy_01a`; the tables retain the source figures and are not forcibly reconciled across tables.
+
+Count axes use comma-separated values below 10,000 and `K` abbreviations at or above that scale; this convention is implemented in `COUNT_AXIS_K_THRESHOLD` in `scripts/analyze.py`.
 
 The workbook also contains appeals data, but its series ends in March 2023 because later data were unavailable. This report does not present an appeals chapter. Prior-route figures are Official Statistics in Development. Tables `Asy_03b` and `Asy_03c` are scheduled to be discontinued after this release.
 

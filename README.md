@@ -10,9 +10,13 @@ Published report: <https://aloysius109.github.io/uk-asylum/>.
 
 The source workbook is vendored at `data/raw/asylum-summary-jun-2026.ods`. `data/raw/source.json` records its Home Office URL, retrieval time and SHA-256. The analysis verifies that fingerprint and never downloads or replaces the accepted workbook during rendering.
 
-This edition uses the tables listed in `scripts/analyze.py`. It keeps calendar-year and year-ending-June periods separate, preserves missing or suppressed values as missing, and retains the source’s case/person distinctions. The main initial grant rate is the published main-applicant rate; the small-boat nationality rates are case-based. The 2011 claim totals in `Asy_00a` and `Asy_01a` differ by six and are not artificially reconciled.
+This edition uses the tables listed in `scripts/analyze.py`. It keeps calendar-year and year-ending-June periods separate, preserves missing or suppressed values as missing, and retains the source’s case/person distinctions. The main initial grant rate is for main applicants: grants of protection or other leave divided by substantive initial decisions (grants plus refusals), excluding withdrawals and administrative outcomes. The small-boat nationality rates are case-based. The 2011 claim totals in `Asy_00a` and `Asy_01a` differ by six and are not artificially reconciled.
 
 The workbook’s appeals series ends in March 2023 and is not included as a report chapter. Prior-route data are Official Statistics in Development. The Home Office says the `Asy_03b` and `Asy_03c` tables will be discontinued after this release.
+
+## Chart conventions
+
+Count axes use comma-separated numbers below 10,000 and `K` abbreviations (with a decimal only when needed) when the axis reaches 10,000 or more. The threshold is defined by `COUNT_AXIS_K_THRESHOLD` in `scripts/analyze.py`; there is no separate chart configuration file. `_quarto.yml` configures the site and its rendering, not chart tick labels.
 
 ## Rebuild and check
 

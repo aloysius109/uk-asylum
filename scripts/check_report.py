@@ -25,6 +25,7 @@ def main():
             "The calendar 2025 main-applicant grant rate changed.")
     require(latest["people_awaiting_initial_decision"] == 40168, "June 2026 pending people changed.")
     require(latest["people_receiving_initial_decisions"] == 115872, "June 2026 initial decisions changed.")
+    require(latest["withdrawals"] == 16265, "June 2026 withdrawals changed.")
     require(latest["grants_of_protection_or_other_leave"] + latest["refusals"] == 115872,
             "June 2026 grants and refusals no longer reconcile to initial decisions.")
     require(round(latest["published_initial_grant_rate_main_applicants"] * 100, 1) == 38.1,
@@ -37,6 +38,8 @@ def main():
         "101,911", "42.1%", "38.1%", "40,168", "32,401", "85,891", "115,872",
         "42,394", "73,478", "33,949", "42,389", "55.7%", "47.7%", "93,293",
         "16,021", "12,568", "3,841", "8,727", "9,009", "Official Statistics in Development",
+        "16,265 withdrawals", "grants plus refusals", "administrative outcomes",
+        "otherwise closed", "COUNT_AXIS_K_THRESHOLD",
         "z", "2011 claim total in `Asy_00a` differs by six from `Asy_01a`",
     ]
     for claim in claims:
