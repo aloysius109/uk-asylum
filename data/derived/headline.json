@@ -1,0 +1,33 @@
+{
+  "source": {
+    "landing_page": "https://www.gov.uk/government/statistical-data-sets/immigration-system-statistics-data-tables",
+    "url": "https://assets.publishing.service.gov.uk/media/6a85c315b0504df9f2c89800/asylum-summary-jun-2026-tables.ods",
+    "retrieved_at_utc": "2026-11-05T10:12:15.099342+00:00",
+    "sha256": "f935782ab90190deb04a1a86f7b6ba7515f32e238c14b96c55993f4793096d14"
+  },
+  "release": "Year ending June 2026",
+  "published": "2026-08-27",
+  "calendar_2025": {
+    "people_claiming_asylum": 101911,
+    "published_initial_grant_rate_main_applicants": 0.42069679901593554
+  },
+  "year_ending_june_2026": {
+    "people_claiming_asylum": 85891,
+    "people_receiving_initial_decisions": 115872,
+    "grants_of_protection_or_other_leave": 42394,
+    "refusals": 73478,
+    "withdrawals": 16265,
+    "published_initial_grant_rate_main_applicants": 0.3813556589680484,
+    "people_awaiting_initial_decision": 40168,
+    "cases_awaiting_initial_decision": 32401,
+    "people_in_receipt_of_support": 93293,
+    "accommodated_in_hotels": 16021,
+    "asylum_related_returns": 12568,
+    "enforced_returns": 3841,
+    "voluntary_returns": 8727
+  },
+  "small_boat_case_grant_rates": {
+    "year_ending_june_2025": 0.557186840029516,
+    "year_ending_june_2026": 0.477047322187589
+  }
+}

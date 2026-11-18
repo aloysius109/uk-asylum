@@ -1,0 +1,29 @@
+project:
+  type: website
+  output-dir: _site
+  render:
+    - index.qmd
+  resources:
+    - assets/*.svg
+    - data/derived/*.csv
+    - data/derived/*.json
+    - data/raw/asylum-summary-jun-2026.ods
+    - data/raw/source.json
+website:
+  title: "UK asylum, in detail"
+  description: "A Home Office data-led report on UK asylum claims, routes, decisions, waiting times and support, using the year ending June 2026 summary tables."
+  site-url: "https://aloysius109.github.io/uk-asylum/"
+  navbar: false
+  page-footer:
+    left: "Kathryn Hopkins · UK asylum statistics"
+    right: "Home Office tables · Year ending June 2026"
+format:
+  html:
+    theme: cosmo
+    css: styles.css
+    include-in-header: head-social.html
+    include-after-body: analytics.html
+    toc: true
+    toc-depth: 2
+    smooth-scroll: true
+    embed-resources: false

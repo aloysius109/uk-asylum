@@ -1,0 +1,18 @@
+{
+  "title": "UK asylum report — source watch",
+  "note": "Baselined to the June 2026 Home Office asylum summary workbook used in data/raw/. Re-baseline only after a new edition has been deliberately adopted and reviewed.",
+  "sources": [
+    {
+      "id": "home-office-asylum-summary",
+      "label": "Home Office asylum summary tables",
+      "url": "https://www.gov.uk/government/statistical-data-sets/immigration-system-statistics-data-tables",
+      "check": "links",
+      "pattern": "asylum-summary-([a-z]+-\\d{4})-tables\\.ods",
+      "latest_release": "jun-2026",
+      "files": [
+        "asylum-summary-jun-2026-tables.ods"
+      ],
+      "note": "The listing page is checked for a new or withdrawn asylum summary workbook; the watcher does not download the file into the report."
+    }
+  ]
+}

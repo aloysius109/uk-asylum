@@ -1,0 +1,39 @@
+# UK asylum, in detail
+
+A reproducible UK report built from the Home Office asylum summary tables, year ending June 2026. It covers claims, age and nationality, route before claiming, decisions, small boats, inadmissibility, waiting times and backlog, cohorts, children, support and returns.
+
+The report is intentionally separate from [Asylum Tracker](https://github.com/aloysius109/asylum-tracker), which combines global UNHCR analysis with a shorter UK comparison. This project focuses on the wider Home Office summary tables.
+
+## Source edition
+
+The source workbook is vendored at `data/raw/asylum-summary-jun-2026.ods`. `data/raw/source.json` records its Home Office URL, retrieval time and SHA-256. The analysis verifies that fingerprint and never downloads or replaces the accepted workbook during rendering.
+
+This edition uses the tables listed in `scripts/analyze.py`. It keeps calendar-year and year-ending-June periods separate, preserves missing or suppressed values as missing, and retains the source’s case/person distinctions. The main initial grant rate is the published main-applicant rate; the small-boat nationality rates are case-based. The 2011 claim totals in `Asy_00a` and `Asy_01a` differ by six and are not artificially reconciled.
+
+The workbook’s appeals series ends in March 2023 and is not included as a report chapter. Prior-route data are Official Statistics in Development. The Home Office says the `Asy_03b` and `Asy_03c` tables will be discontinued after this release.
+
+## Rebuild and check
+
+With Python 3.12 and Quarto installed:
+
+```powershell
+python -m pip install -r requirements.txt
+python scripts/analyze.py
+python scripts/check_report.py
+python -m pytest tests
+quarto render
+```
+
+The analysis writes charts to `assets/`, parsed source tables and downloadable CSVs to `data/derived/`, and a dated headline record. Quarto writes the static site to `_site/`.
+
+## Source watch and adopting a new release
+
+Run `python scripts/check_sources.py` to see whether the Home Office data-table page lists a new asylum-summary workbook. The watcher only reads upstream and never changes the report. The weekly workflow reports a change as a GitHub issue; it does not download, adopt or publish a new edition.
+
+To adopt a release, replace the saved workbook and update `data/raw/source.json` only after review. Then rerun `scripts/analyze.py`, revise affected figures and wording in `index.qmd`, run the tests and `scripts/check_report.py`, render and review the site, and re-baseline `sources/watch.json`. A newer source is not published automatically.
+
+## Attribution
+
+Source: UK Home Office, [Immigration system statistics data tables](https://www.gov.uk/government/statistical-data-sets/immigration-system-statistics-data-tables). Reuse is subject to the [Open Government Licence](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).
+
+The report uses GoatCounter in a no-cookie configuration, configured in `analytics.html`.
