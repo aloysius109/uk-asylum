@@ -25,6 +25,11 @@
       "url": "https://assets.publishing.service.gov.uk/media/6a96a66b3b22fb169dc18fe4/immigration-and-protection-data-apr-to-jun-2026.xlsx",
       "filename": "immigration-and-protection-data-apr-to-jun-2026.xlsx",
       "sha256": "07bf35f8fe2803a034e113dd604f275ced5cd1d522c5e98f4aa1b84362b2e11e"
+    },
+    "support": {
+      "url": "https://assets.publishing.service.gov.uk/media/6a85c2f1c9205b515d421eec/asylum-seekers-receipt-support-datasets-jun-2026.xlsx",
+      "filename": "asylum-seekers-receipt-support-datasets-jun-2026.xlsx",
+      "sha256": "72f915e4ae27e78b8d077a3fffc96b45a151343b1c8f8ee9d98750b2fd78a8c4"
     }
   },
   "quarterly_extract": {
@@ -34,5 +39,9 @@
   "work_in_progress_extract": {
     "file": "asylum-work-in-progress.csv",
     "sha256": "6e64fdf4bd2f8374a36f120ae991a7293844f3dd3497c1404368e91afa4e5d80"
+  },
+  "support_extract": {
+    "file": "support-accommodation-extract.csv",
+    "sha256": "17ea0192b56a0dc8cb2acccd6a7679b2018031bb7a7e44bd21c55a1a355d1969"
   }
 }

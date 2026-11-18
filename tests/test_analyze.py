@@ -10,12 +10,16 @@ from analyze import (  # noqa: E402
     SHEETS,
     cell_value,
     format_count,
+    hotel_region_breakdown,
     header_text,
     load_quarterly_data,
+    load_support_data,
     load_tables,
     parse_table,
     quarterly_flows_with_rolling_returns,
+    support_series,
     validate_quarterly_data,
+    validate_support_data,
     validate_tables,
     value_for,
 )
@@ -83,6 +87,40 @@ def test_quarterly_flows_and_stock_reconcile_to_summary_and_preserve_units():
     assert work_in_progress.loc[
         work_in_progress["Quarter"] == "2024 Q2", "Total Work In Progress"
     ].iloc[0] == 224742
+
+
+def test_quarterly_hotel_series_section_98_and_regional_breakdown_reconcile():
+    _, tables = load_tables()
+    support = load_support_data()
+    validate_support_data(tables, support)
+    series = support_series(support)
+    assert len(series) == 50
+    assert series.iloc[0]["quarter"] == "2014 Q1"
+    assert series.iloc[-1]["quarter"] == "2026 Q2"
+
+    section_98 = series.loc[series["quarter"] == "2022 Q3"].iloc[0]
+    assert section_98["section_98"] == 37142
+    assert pd.isna(section_98["hotel"])
+    dec_2022 = series.loc[series["quarter"] == "2022 Q4"].iloc[0]
+    assert dec_2022["hotel"] == 45753
+    assert pd.isna(dec_2022["section_98"])
+
+    hotels = series.dropna(subset=["hotel"])
+    peak = hotels.loc[hotels["hotel"].idxmax()]
+    latest = hotels.iloc[-1]
+    assert len(hotels) == 15
+    assert peak["quarter"] == "2023 Q3"
+    assert peak["hotel"] == 56018
+    assert latest["hotel"] == 16021
+    assert latest["total_supported"] == 93293
+
+    regions = hotel_region_breakdown(support)
+    for quarter in ("2023 Q3", "2026 Q2"):
+        regional = regions.loc[regions["quarter"] == quarter]
+        national = series.loc[series["quarter"] == quarter, "hotel"].iloc[0]
+        assert regional["people"].sum() == national
+    london = regions.loc[(regions["quarter"] == "2026 Q2") & (regions["uk_region"] == "London")]
+    assert london["people"].iloc[0] == 5487
 
 
 def test_small_boat_case_rate_is_not_a_people_rate():

@@ -116,6 +116,16 @@ At the end of June 2026, **93,293 asylum seekers** were recorded as receiving su
 
 Support counts are not counts of households or hotel rooms. The hotel figure is a subset of people receiving support, not an additional population to add to that total.
 
+The quarterly accommodation dataset shows that hotel accommodation peaked at **56,018 people in September 2023** and fell to **16,021 in June 2026**. The Home Office records hotels separately from the quarter ending December 2022; this series cannot show hotel use before then.
+
+![People receiving asylum support, the pre-2023 Section 98 accommodation category, and hotel accommodation from December 2022 to June 2026.](assets/hotel-accommodation.svg){fig-alt="A quarterly chart shows all people receiving support, the Section 98 accommodation category through September 2022, and the separately reported hotel series from December 2022. The hotel series peaks in September 2023 and falls to June 2026."}
+
+The Section 98 line is a separate historical category, **not a hotel count**. Home Office notes say that before 30 June 2023 the Section 98 figures include people in initial or contingency accommodation regardless of support eligibility. The accommodation dataset also classifies Section 4 recipients as dispersal before 31 March 2023, even where hotels were used. The chart counts people, not rooms; the source’s “Unknown” region is retained in the regional totals.
+
+The regional breakdown compares the September 2023 national hotel peak with June 2026. London had the largest regional count in June 2026, with **5,487 people** accommodated in hotels.
+
+![Hotel accommodation by UK region or nation at the September 2023 peak and in June 2026.](assets/hotel-by-region.svg){fig-alt="Paired horizontal bars compare hotel accommodation by UK region or nation at the September 2023 peak and in June 2026, including the Unknown category."}
+
 ## Returns
 
 The summary table reports returns by year, but the Home Office’s detailed return workbook and claims datasets support a quarterly comparison. The first chart shows people claiming asylum, substantive initial decisions (grants plus refusals), and asylum-related returns. **Monthly counts are not published in these tables**, so quarterly is the finest common period. In the latest quarter, 2026 Q2, the sources record 17,233 claims, 19,079 substantive initial decisions and 3,157 asylum-related returns. The latest seven quarters are provisional and may be revised.
@@ -132,9 +142,9 @@ The lines use a common count scale to show their different magnitudes, but their
 
 ## Data, definitions and reproducibility
 
-This edition uses the Home Office **asylum summary tables, year ending June 2026**, published on 27 August 2026, alongside reviewed quarterly extracts from the asylum claims, pending, returns and migration-transparency workbooks. The summary ODS fingerprint is recorded in `data/raw/source.json`; the quarterly workbook and extract hashes are recorded in `data/raw/quarterly-sources.json`. The analysis refuses to run if either the ODS or the quarterly extracts differ from their pinned hashes. Rendering the report does not download or silently replace source data.
+This edition uses the Home Office **asylum summary tables, year ending June 2026**, published on 27 August 2026, alongside reviewed quarterly extracts from the asylum claims, pending, returns, migration-transparency and asylum-support workbooks. The summary ODS fingerprint is recorded in `data/raw/source.json`; the quarterly workbook and extract hashes are recorded in `data/raw/quarterly-sources.json`. The analysis refuses to run if the ODS or any committed quarterly extract differs from its pinned hash. Rendering the report does not download or silently replace source data.
 
-The analysis parses 18 summary tables directly and validates the quarterly extracts against `Asy_00a` for calendar years 2010–2025, the year ending June 2026 and the latest pending stock. The ASY_03 work-in-progress series ends in June 2024. Cells marked `z`, `:`, `-`, or similar source suppression or non-applicability markers remain missing; they are never converted into zero. Calendar years, rolling years and quarters remain distinct. The 2011 claim total in `Asy_00a` differs by six from `Asy_01a`; the tables retain the source figures and are not forcibly reconciled across tables.
+The analysis parses 18 summary tables directly and validates the quarterly flow extracts against `Asy_00a` for calendar years 2010–2025, the year ending June 2026 and the latest pending stock. Support and hotel counts are reconciled for year-end 2022–2025 and June 2026; regional hotel counts also sum to the national totals. The ASY_03 work-in-progress series ends in June 2024. Cells marked `z`, `:`, `-`, or similar source suppression or non-applicability markers remain missing; they are never converted into zero. Calendar years, rolling years and quarters remain distinct. The 2011 claim total in `Asy_00a` differs by six from `Asy_01a`; the tables retain the source figures and are not forcibly reconciled across tables.
 
 Count axes use comma-separated values below 10,000 and `K` abbreviations at or above that scale; this convention is implemented in `COUNT_AXIS_K_THRESHOLD` in `scripts/analyze.py`.
 
@@ -155,6 +165,9 @@ These files are derived from the pinned workbook above. The all-table CSV is a l
 - [Source URL, retrieval time and SHA-256 (JSON)](data/raw/source.json)
 - [Quarterly claims, decisions, returns and pending stock (CSV)](data/derived/quarterly-flows.csv)
 - [ASY_03 work-in-progress snapshots (CSV)](data/raw/asylum-work-in-progress.csv)
+- [Quarterly support and accommodation series (CSV)](data/derived/quarterly-support-accommodation.csv)
+- [Hotel accommodation by region or nation (CSV)](data/derived/hotel-by-region.csv)
+- [Pinned quarterly support/accommodation extract (CSV)](data/raw/support-accommodation-extract.csv)
 - [Quarterly source URLs and fingerprints (JSON)](data/raw/quarterly-sources.json)
 :::
 

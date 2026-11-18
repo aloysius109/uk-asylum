@@ -19,6 +19,7 @@ from analyze import load_tables, value_for  # noqa: E402
 CACHE = ROOT / "data" / "raw" / "cache"
 QUARTERLY_PATH = ROOT / "data" / "raw" / "quarterly-extract.csv"
 WORK_IN_PROGRESS_PATH = ROOT / "data" / "raw" / "asylum-work-in-progress.csv"
+SUPPORT_PATH = ROOT / "data" / "raw" / "support-accommodation-extract.csv"
 MANIFEST_PATH = ROOT / "data" / "raw" / "quarterly-sources.json"
 SOURCE_PAGE = "https://www.gov.uk/government/statistical-data-sets/immigration-system-statistics-data-tables"
 TRANSPARENCY_PAGE = "https://www.gov.uk/government/statistical-data-sets/migration-transparency-data"
@@ -50,6 +51,13 @@ SOURCES = {
             "immigration-and-protection-data-apr-to-jun-2026.xlsx"
         ),
         "filename": "immigration-and-protection-data-apr-to-jun-2026.xlsx",
+    },
+    "support": {
+        "url": (
+            "https://assets.publishing.service.gov.uk/media/6a85c2f1c9205b515d421eec/"
+            "asylum-seekers-receipt-support-datasets-jun-2026.xlsx"
+        ),
+        "filename": "asylum-seekers-receipt-support-datasets-jun-2026.xlsx",
     },
 }
 QUARTERLY_COLUMNS = [
@@ -192,6 +200,39 @@ def parse_quarterly_sources(paths):
     return quarterly
 
 
+def parse_support_sources(path):
+    data = pd.read_excel(path, sheet_name="Data_Asy_D09", header=1, engine="openpyxl")
+    required = {"Nationality", "Region", "Support Type", "Accommodation Type", "UK Region / Nation", "People"}
+    if not required.issubset(data.columns) or len(data.columns) < 7:
+        raise ValueError(f"The support workbook table is missing expected fields: {sorted(required - set(data.columns))}.")
+
+    dates = pd.to_datetime(data.iloc[:, 0], errors="coerce", dayfirst=True)
+    if dates.isna().any() or not dates.dt.is_quarter_end.all():
+        raise ValueError("The support workbook contains an unrecognised or non-quarter-end snapshot date.")
+    people = pd.to_numeric(data["People"], errors="coerce")
+    if people.isna().any() or (people < 0).any() or not people.mod(1).eq(0).all():
+        raise ValueError("The support workbook contains a missing, negative or non-integer people count.")
+
+    prepared = data[["Support Type", "Accommodation Type", "UK Region / Nation"]].copy()
+    prepared["quarter"] = dates.dt.year.astype(str) + " Q" + dates.dt.quarter.astype(str)
+    prepared["period_end"] = dates.dt.strftime("%Y-%m-%d")
+    prepared["people"] = people.astype("int64")
+    prepared = prepared.rename(columns={
+        "Support Type": "support_type",
+        "Accommodation Type": "accommodation_type",
+        "UK Region / Nation": "uk_region",
+    })
+    grouped = prepared.groupby(
+        ["quarter", "period_end", "support_type", "accommodation_type", "uk_region"],
+        dropna=False,
+        as_index=False,
+    )["people"].sum()
+    return grouped.sort_values(
+        ["quarter", "support_type", "accommodation_type", "uk_region"],
+        na_position="last",
+    ).reset_index(drop=True)
+
+
 def parse_work_in_progress(path):
     raw = pd.read_excel(path, sheet_name="ASY_03", header=None, engine="openpyxl")
     header_index = next(
@@ -227,7 +268,42 @@ def require_equal(actual, expected, message):
         raise ValueError(f"{message}: extracted {actual:,}; Asy_00a reports {expected:,}.")
 
 
-def validate_against_summary(quarterly, work_in_progress, tables):
+def validate_support_against_summary(support, tables):
+    flows = tables["Asy_00a"]
+    quarterly_totals = support.groupby("quarter")["people"].sum()
+    hotel_totals = support.loc[
+        support["accommodation_type"] == "Contingency Accommodation - Hotel"
+    ].groupby("quarter")["people"].sum()
+
+    for year in range(2022, 2026):
+        quarter = f"{year} Q4"
+        for values, label in [
+            (quarterly_totals, "Asylum seekers in receipt of support"),
+            (hotel_totals, "Of which accommodated in hotels"),
+        ]:
+            expected = value_for(flows, label, str(year))
+            actual = values.get(quarter)
+            if expected is not None:
+                if actual is None:
+                    raise ValueError(f"The support workbook is missing the {quarter} {label.lower()} observation.")
+                require_equal(int(actual), int(expected), f"{quarter} {label} does not reconcile")
+
+    latest = "2026 Q2"
+    latest_total = quarterly_totals.get(latest)
+    latest_hotels = hotel_totals.get(latest)
+    if latest_total is None or latest_hotels is None:
+        raise ValueError("The support workbook is missing its June 2026 total or hotel observation.")
+    require_equal(
+        int(latest_total), int(value_for(flows, "Asylum seekers in receipt of support", "Year ending June 2026")),
+        "June 2026 total support does not reconcile",
+    )
+    require_equal(
+        int(latest_hotels), int(value_for(flows, "Of which accommodated in hotels", "Year ending June 2026")),
+        "June 2026 hotel accommodation does not reconcile",
+    )
+
+
+def validate_against_summary(quarterly, work_in_progress, support, tables):
     flows = tables["Asy_00a"]
     measures = {
         "claims": "People claiming asylum",
@@ -265,9 +341,10 @@ def validate_against_summary(quarterly, work_in_progress, tables):
     wip = work_in_progress.loc[work_in_progress["Quarter"] == "2024 Q2", "Total Work In Progress"]
     if wip.empty or int(wip.iloc[0]) != 224742:
         raise ValueError("ASY_03 no longer reports 224,742 work-in-progress cases in June 2024.")
+    validate_support_against_summary(support, tables)
 
 
-def manifest_sources(old_manifest, workbook_hashes, quarterly_hash, wip_hash, update_extract_pins):
+def manifest_sources(old_manifest, workbook_hashes, quarterly_hash, wip_hash, support_hash, update_extract_pins):
     old_workbooks = old_manifest.get("workbooks", {})
     for name, digest in workbook_hashes.items():
         expected = old_workbooks.get(name, {}).get("sha256")
@@ -275,10 +352,13 @@ def manifest_sources(old_manifest, workbook_hashes, quarterly_hash, wip_hash, up
             raise ValueError(f"Pinned {name} workbook SHA-256 changed; review before refreshing quarterly outputs.")
     expected_quarterly = old_manifest.get("quarterly_extract", {}).get("sha256")
     expected_wip = old_manifest.get("work_in_progress_extract", {}).get("sha256")
+    expected_support = old_manifest.get("support_extract", {}).get("sha256")
     if expected_quarterly and quarterly_hash != expected_quarterly and not update_extract_pins:
         raise ValueError("The quarterly extract changed; review it before updating the source manifest.")
     if expected_wip and wip_hash != expected_wip and not update_extract_pins:
         raise ValueError("The work-in-progress extract changed; review it before updating the source manifest.")
+    if expected_support and support_hash != expected_support and not update_extract_pins:
+        raise ValueError("The support extract changed; review it before updating the source manifest.")
 
     return {
         "release": "Year ending June 2026",
@@ -294,6 +374,7 @@ def manifest_sources(old_manifest, workbook_hashes, quarterly_hash, wip_hash, up
         },
         "quarterly_extract": {"file": "quarterly-extract.csv", "sha256": quarterly_hash},
         "work_in_progress_extract": {"file": "asylum-work-in-progress.csv", "sha256": wip_hash},
+        "support_extract": {"file": "support-accommodation-extract.csv", "sha256": support_hash},
     }
 
 
@@ -309,21 +390,25 @@ def prepare(update_extract_pins=False):
 
     quarterly = parse_quarterly_sources(paths)
     work_in_progress = parse_work_in_progress(paths["transparency"])
+    support = parse_support_sources(paths["support"])
     _, tables = load_tables()
-    validate_against_summary(quarterly, work_in_progress, tables)
+    validate_against_summary(quarterly, work_in_progress, support, tables)
 
     quarterly_bytes = quarterly.to_csv(index=False, lineterminator="\n", na_rep="").encode("utf-8")
     wip_bytes = work_in_progress.to_csv(index=False, lineterminator="\n", na_rep="").encode("utf-8")
+    support_bytes = support.to_csv(index=False, lineterminator="\n", na_rep="").encode("utf-8")
     quarterly_hash = hashlib.sha256(quarterly_bytes).hexdigest()
     wip_hash = hashlib.sha256(wip_bytes).hexdigest()
-    manifest = manifest_sources(old_manifest, hashes, quarterly_hash, wip_hash, update_extract_pins)
+    support_hash = hashlib.sha256(support_bytes).hexdigest()
+    manifest = manifest_sources(old_manifest, hashes, quarterly_hash, wip_hash, support_hash, update_extract_pins)
 
     QUARTERLY_PATH.write_bytes(quarterly_bytes)
     WORK_IN_PROGRESS_PATH.write_bytes(wip_bytes)
+    SUPPORT_PATH.write_bytes(support_bytes)
     MANIFEST_PATH.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     print(
-        "Prepared 66 quarterly observations and 14 ASY_03 snapshots; "
-        "calendar, rolling-year and June stock totals reconcile to Asy_00a."
+        "Prepared quarterly flows, 14 ASY_03 snapshots and quarterly support/accommodation data; "
+        "flow and support totals reconcile to Asy_00a."
     )
 
 

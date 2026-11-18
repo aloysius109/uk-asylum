@@ -39,5 +39,14 @@
     "people_awaiting_initial_decision": 40168,
     "total_work_in_progress_cases": 224742,
     "work_in_progress_quarter": "2024 Q2"
+  },
+  "hotel_accommodation": {
+    "peak_quarter": "2023 Q3",
+    "peak_people": 56018,
+    "latest_quarter": "2026 Q2",
+    "latest_people": 16021,
+    "latest_total_supported": 93293,
+    "largest_region_latest": "London",
+    "largest_region_latest_people": 5487
   }
 }

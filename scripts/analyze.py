@@ -23,6 +23,9 @@ QUARTERLY_COLUMNS = [
     "withdrawals", "admin_outcomes", "enforced_returns", "voluntary_returns",
     "refused_entry_returns", "asylum_related_returns", "people_awaiting_initial_decision",
 ]
+SUPPORT_COLUMNS = [
+    "quarter", "period_end", "support_type", "accommodation_type", "uk_region", "people",
+]
 
 SHEETS = {
     "Asy_00a": "Date / As at the end of...",
@@ -185,6 +188,23 @@ def load_quarterly_data():
     return quarterly, work_in_progress
 
 
+def load_support_data():
+    manifest = json.loads(QUARTERLY_MANIFEST.read_text(encoding="utf-8"))
+    entry = manifest.get("support_extract", {})
+    path = ROOT / "data" / "raw" / entry.get("file", "")
+    if not path.is_file():
+        raise ValueError(f"Pinned support data file is missing: {path}.")
+    actual_hash = hashlib.sha256(path.read_bytes()).hexdigest()
+    if actual_hash != entry.get("sha256"):
+        raise ValueError(f"Support data SHA-256 differs from quarterly-sources.json: {path.name}.")
+
+    support = pd.read_csv(path, dtype={"quarter": str, "period_end": str})
+    if list(support.columns) != SUPPORT_COLUMNS:
+        raise ValueError("The support extract has unexpected or missing columns.")
+    support["people"] = pd.to_numeric(support["people"], errors="coerce")
+    return support
+
+
 def validate_quarterly_data(tables, quarterly, work_in_progress):
     expected_quarters = [f"{year} Q{quarter}" for year in range(2010, 2027)
                          for quarter in range(1, 5) if year < 2026 or quarter <= 2]
@@ -251,6 +271,84 @@ def quarterly_flows_with_rolling_returns(quarterly):
     result = quarterly.copy()
     result["rolling_12m_returns"] = result["asylum_related_returns"].rolling(4, min_periods=4).sum()
     return result
+
+
+def support_series(support):
+    by_accommodation = support.groupby(
+        ["quarter", "period_end", "accommodation_type"], dropna=False
+    )["people"].sum().unstack("accommodation_type")
+    by_accommodation = by_accommodation.rename(columns={
+        "Contingency Accommodation - Hotel": "hotel",
+        "N/A - Section 98 (pre-2023)": "section_98",
+        "Contingency Accommodation - Other": "other_contingency",
+    })
+    series = by_accommodation.reset_index()
+    for column in ("hotel", "section_98", "other_contingency"):
+        if column not in series:
+            series[column] = pd.NA
+        series[column] = pd.array(series[column], dtype="Int64")
+    totals = support.groupby(["quarter", "period_end"], as_index=False)["people"].sum()
+    series = series.merge(totals.rename(columns={"people": "total_supported"}), on=["quarter", "period_end"])
+    return series.sort_values("quarter").reset_index(drop=True)[
+        ["quarter", "period_end", "hotel", "section_98", "other_contingency", "total_supported"]
+    ]
+
+
+def hotel_region_breakdown(support):
+    hotels = support.loc[
+        support["accommodation_type"] == "Contingency Accommodation - Hotel",
+        ["quarter", "period_end", "uk_region", "people"],
+    ].copy()
+    hotels["uk_region"] = hotels["uk_region"].fillna("Not stated")
+    return hotels.groupby(
+        ["quarter", "period_end", "uk_region"], as_index=False, dropna=False
+    )["people"].sum().sort_values(["quarter", "uk_region"]).reset_index(drop=True)
+
+
+def validate_support_data(tables, support):
+    if support.empty or support["people"].isna().any() or (support["people"] < 0).any():
+        raise ValueError("The support extract must contain non-negative people counts.")
+    keys = ["quarter", "period_end", "support_type", "accommodation_type", "uk_region"]
+    if support.duplicated(keys).any():
+        raise ValueError("The support extract contains duplicate category rows.")
+    expected_quarters = [f"{year} Q{quarter}" for year in range(2014, 2027)
+                         for quarter in range(1, 5) if year < 2026 or quarter <= 2]
+    series = support_series(support)
+    if series["quarter"].tolist() != expected_quarters:
+        raise ValueError("The support extract must cover each quarter from 2014 Q1 through 2026 Q2.")
+    hotels = series.loc[series["hotel"].notna()]
+    if hotels["quarter"].tolist() != [f"{year} Q{quarter}" for year in range(2022, 2027)
+                                     for quarter in range(1, 5) if year > 2022 or quarter >= 4
+                                     if year < 2026 or quarter <= 2]:
+        raise ValueError("The hotel series must begin in 2022 Q4 and continue through 2026 Q2.")
+    section_98 = series.loc[series["section_98"].notna()]
+    if section_98.empty or section_98["quarter"].iloc[-1] != "2022 Q3":
+        raise ValueError("The Section 98 series should end at 2022 Q3, before hotels were separately reported.")
+
+    flows = tables["Asy_00a"]
+    for year in range(2022, 2026):
+        quarter = f"{year} Q4"
+        row = series.loc[series["quarter"] == quarter].iloc[0]
+        for column, label in [
+            ("total_supported", "Asylum seekers in receipt of support"),
+            ("hotel", "Of which accommodated in hotels"),
+        ]:
+            expected = value_for(flows, label, str(year))
+            if expected is not None and int(row[column]) != int(expected):
+                raise ValueError(f"Quarterly {quarter} {label} does not reconcile to Asy_00a.")
+
+    latest = series.loc[series["quarter"] == "2026 Q2"].iloc[0]
+    if int(latest["hotel"]) != int(value_for(flows, "Of which accommodated in hotels", "Year ending June 2026")):
+        raise ValueError("Quarterly June 2026 hotel accommodation does not reconcile to Asy_00a.")
+    if int(latest["total_supported"]) != int(value_for(flows, "Asylum seekers in receipt of support", "Year ending June 2026")):
+        raise ValueError("Quarterly June 2026 total support does not reconcile to Asy_00a.")
+
+    regions = hotel_region_breakdown(support)
+    for quarter in hotels["quarter"]:
+        regional_total = int(regions.loc[regions["quarter"] == quarter, "people"].sum())
+        national_total = int(series.loc[series["quarter"] == quarter, "hotel"].iloc[0])
+        if regional_total != national_total:
+            raise ValueError(f"Regional hotel counts do not sum to the national total in {quarter}.")
 
 
 def validate_tables(tables):
@@ -333,11 +431,17 @@ def latest_summary(tables):
     return {key: optional_value(flows, label, column) for key, label in labels.items()}
 
 
-def make_headlines(metadata, tables, quarterly, work_in_progress):
+def make_headlines(metadata, tables, quarterly, work_in_progress, support):
     small_boat = tables["Asy_02d"]
     quarter_flows = quarterly_flows_with_rolling_returns(quarterly)
     latest_quarter = quarter_flows.iloc[-1]
     latest_work_in_progress = work_in_progress.iloc[-1]
+    accommodations = support_series(support)
+    hotel_series = accommodations.dropna(subset=["hotel"])
+    peak_hotel = hotel_series.loc[hotel_series["hotel"].idxmax()]
+    latest_hotel = hotel_series.iloc[-1]
+    latest_regions = hotel_region_breakdown(support).loc[lambda data: data["quarter"] == latest_hotel["quarter"]]
+    largest_region = latest_regions.loc[latest_regions["people"].idxmax()]
     return {
         "source": metadata,
         "release": "Year ending June 2026",
@@ -360,6 +464,15 @@ def make_headlines(metadata, tables, quarterly, work_in_progress):
             "people_awaiting_initial_decision": int(latest_quarter["people_awaiting_initial_decision"]),
             "total_work_in_progress_cases": int(latest_work_in_progress["Total Work In Progress"]),
             "work_in_progress_quarter": latest_work_in_progress["Quarter"],
+        },
+        "hotel_accommodation": {
+            "peak_quarter": peak_hotel["quarter"],
+            "peak_people": int(peak_hotel["hotel"]),
+            "latest_quarter": latest_hotel["quarter"],
+            "latest_people": int(latest_hotel["hotel"]),
+            "latest_total_supported": int(latest_hotel["total_supported"]),
+            "largest_region_latest": largest_region["uk_region"],
+            "largest_region_latest_people": int(largest_region["people"]),
         },
     }
 
@@ -509,6 +622,64 @@ def chart_support(tables):
     save_chart(fig, "asylum-support")
 
 
+def chart_hotel_accommodation(support):
+    data = support_series(support)
+    dates = pd.to_datetime(data["period_end"])
+    fig, ax = plt.subplots(figsize=(11, 4.8), layout="constrained")
+    ax.plot(dates, data["total_supported"], color=MUTED, linewidth=1.8,
+            label="All people receiving support")
+    ax.plot(dates, data["section_98"], color=GOLD, linewidth=2.1, linestyle="--",
+            label="Section 98 accommodation (not hotels)")
+    ax.plot(dates, data["hotel"], color=TEAL, linewidth=2.7, marker="o", markersize=3,
+            label="Contingency accommodation – hotels")
+    hotel_start = pd.Timestamp("2022-12-31")
+    ax.axvline(hotel_start, color=GRID, linewidth=1.2, linestyle=":",
+               label="Separate hotel count begins")
+    ax.set_ylim(bottom=0)
+    ax.set_ylabel("People receiving Home Office support", color=MUTED)
+    format_count_axis(ax.yaxis, data["total_supported"].max())
+    ax.set_title("Asylum support and hotel accommodation", loc="left", color=INK, fontsize=15, pad=14)
+    style_quarter_axis(ax, "2014-03-31", "2026-06-30")
+    years = [2014, 2018, 2022, 2026]
+    ax.set_xticks([pd.Timestamp(year=year, month=1, day=1) for year in years], [str(year) for year in years])
+    ax.legend(frameon=False, loc="upper left", fontsize=8.5)
+    save_chart(fig, "hotel-accommodation")
+
+
+def chart_hotel_regions(support):
+    national = support_series(support)
+    hotels = national.dropna(subset=["hotel"])
+    peak = hotels.loc[hotels["hotel"].idxmax()]
+    latest = hotels.iloc[-1]
+    regions = hotel_region_breakdown(support)
+    peak_regions = regions.loc[regions["quarter"] == peak["quarter"]].set_index("uk_region")["people"]
+    latest_regions = regions.loc[regions["quarter"] == latest["quarter"]].set_index("uk_region")["people"]
+    labels = sorted(
+        set(peak_regions.index) | set(latest_regions.index),
+        key=lambda label: max(peak_regions.get(label, 0), latest_regions.get(label, 0)),
+    )
+    peak_values = [int(peak_regions.get(label, 0)) for label in labels]
+    latest_values = [int(latest_regions.get(label, 0)) for label in labels]
+    positions = range(len(labels))
+    fig, ax = plt.subplots(figsize=(10.5, 6.5), layout="constrained")
+    ax.barh([position - .19 for position in positions], peak_values, height=.36, color=GOLD,
+            label=f"{peak['quarter']} hotel peak")
+    ax.barh([position + .19 for position in positions], latest_values, height=.36, color=TEAL,
+            label=latest["quarter"])
+    ax.set_yticks(list(positions), labels)
+    ax.invert_yaxis()
+    ax.set_xlabel("People in contingency hotel accommodation", color=MUTED)
+    format_count_axis(ax.xaxis, max(peak_values + latest_values))
+    ax.set_title("Hotel accommodation by UK region or nation", loc="left", color=INK, fontsize=15, pad=14)
+    ax.xaxis.grid(True, color=GRID, linewidth=.8)
+    ax.yaxis.grid(False)
+    ax.spines[["top", "right", "left", "bottom"]].set_visible(False)
+    ax.tick_params(axis="both", colors=MUTED, labelsize=9, length=0, pad=7)
+    ax.set_axisbelow(True)
+    ax.legend(frameon=False, loc="lower right", fontsize=9)
+    save_chart(fig, "hotel-by-region")
+
+
 def style_quarter_axis(ax, start, end):
     years = list(range(2010, 2027, 4))
     ax.set_xticks([pd.Timestamp(year=year, month=1, day=1) for year in years])
@@ -566,9 +737,9 @@ def chart_stock_and_returns(quarterly, work_in_progress):
     save_chart(fig, "stock-vs-returns")
 
 
-def write_outputs(metadata, tables, quarterly, work_in_progress):
+def write_outputs(metadata, tables, quarterly, work_in_progress, support):
     DERIVED.mkdir(parents=True, exist_ok=True)
-    headlines = make_headlines(metadata, tables, quarterly, work_in_progress)
+    headlines = make_headlines(metadata, tables, quarterly, work_in_progress, support)
     (DERIVED / "tables.json").write_text(
         json.dumps({"source": metadata, "tables": tables}, indent=2, allow_nan=False) + "\n",
         encoding="utf-8",
@@ -592,11 +763,19 @@ def write_outputs(metadata, tables, quarterly, work_in_progress):
     quarterly_flows_with_rolling_returns(quarterly).to_csv(
         DERIVED / "quarterly-flows.csv", index=False, lineterminator="\n", na_rep=""
     )
+    support_series(support).to_csv(
+        DERIVED / "quarterly-support-accommodation.csv", index=False, lineterminator="\n", na_rep=""
+    )
+    hotel_region_breakdown(support).to_csv(
+        DERIVED / "hotel-by-region.csv", index=False, lineterminator="\n", na_rep=""
+    )
     chart_annual_flows(tables)
     chart_grant_rates(tables)
     chart_small_boat_rates(tables)
     chart_waiting_times(tables)
     chart_support(tables)
+    chart_hotel_accommodation(support)
+    chart_hotel_regions(support)
     chart_quarterly_flows(quarterly)
     chart_stock_and_returns(quarterly, work_in_progress)
 
@@ -606,7 +785,9 @@ def main():
     validate_tables(tables)
     quarterly, work_in_progress = load_quarterly_data()
     validate_quarterly_data(tables, quarterly, work_in_progress)
-    write_outputs(metadata, tables, quarterly, work_in_progress)
+    support = load_support_data()
+    validate_support_data(tables, support)
+    write_outputs(metadata, tables, quarterly, work_in_progress, support)
     print("Parsed 18 summary tables and pinned quarterly data; source fingerprints and reconciliations validated.")
 
 
