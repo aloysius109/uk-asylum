@@ -82,6 +82,21 @@
     "not_awaiting_initial_decision_cases": 137525,
     "not_awaiting_initial_decision_share": 0.611923894955104
   },
+  "awaiting_comparison": {
+    "june_2024": {
+      "people": 118882,
+      "main_applicant_cases": 85839,
+      "dependants": 33043,
+      "wip_awaiting_cases": 87217,
+      "wip_total_cases": 224742,
+      "publication_difference_cases": 1378
+    },
+    "june_2026": {
+      "people": 40168,
+      "main_applicant_cases": 32401,
+      "dependants": 7767
+    }
+  },
   "hotel_accommodation": {
     "peak_quarter": "2023 Q3",
     "peak_people": 56018,

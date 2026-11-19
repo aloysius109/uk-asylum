@@ -34,7 +34,7 @@
   },
   "quarterly_extract": {
     "file": "quarterly-extract.csv",
-    "sha256": "02bc3aae61ab496cc4e4d1e2380d1a14a1af71cba13c4d827f808001ebcc5809"
+    "sha256": "994c816937c72cec12a999a8a9745f884c266922277837ad9f05bd7c2447431b"
   },
   "work_in_progress_extract": {
     "file": "asylum-work-in-progress.csv",

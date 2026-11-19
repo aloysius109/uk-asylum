@@ -39,6 +39,7 @@ def main():
     decisions = headlines["decisions"]
     children = headlines["children"]
     wip = headlines["work_in_progress"]
+    awaiting_comparison = headlines["awaiting_comparison"]
 
     require(annual["people_claiming_asylum"] == 101911, "Calendar 2025 claims changed from the report headline.")
     require(round(annual["published_initial_grant_rate_main_applicants"] * 100, 1) == 42.1,
@@ -105,6 +106,15 @@ def main():
             and round(wip["not_awaiting_initial_decision_share"] * 100, 1) == 61.2
             and stages.loc["2023 Q2", "decided_excluding_on_hold"] == 63097,
             "The published WIP count, stage split or earlier decision-status bound changed.")
+    require(awaiting_comparison["june_2024"]["people"] == 118882
+            and awaiting_comparison["june_2024"]["main_applicant_cases"] == 85839
+            and awaiting_comparison["june_2024"]["dependants"] == 33043
+            and awaiting_comparison["june_2024"]["wip_awaiting_cases"] == 87217
+            and awaiting_comparison["june_2024"]["publication_difference_cases"] == 1378
+            and awaiting_comparison["june_2026"]["people"] == 40168
+            and awaiting_comparison["june_2026"]["main_applicant_cases"] == 32401
+            and awaiting_comparison["june_2026"]["dependants"] == 7767,
+            "The same-date D03 and ASY_03 pending counts or June 2026 unit split changed.")
 
     claims = [
         "101,911", "42.1%", "38.1%", "40,168", "32,401", "85,891", "115,872",
@@ -134,7 +144,11 @@ def main():
         "224,742 main-applicant cases", "87,217 (38.8%)", "137,525 (61.2%)",
         "On Hold” includes people who may be either before or after a decision",
         "The 2024 “Post Decision” segment has no further breakdown",
-        "not a current 2026 total", "different units and reporting dates",
+        "not a current 2026 total", "different dates and use different units",
+        "118,882 people", "85,839 main applicants and 33,043 dependants",
+        "32,401 main applicants and 7,767 dependants", "87,217 in ASY_03",
+        "85,839 in D03 and 87,217 in ASY_03, a difference of 1,378 cases",
+        "separately compiled publications", "the two publications are not interchangeable",
         "2010 Q1 to 2026 Q2",
         "z", "2011 claim total in `Asy_00a` differs by six from `Asy_01a`",
     ]

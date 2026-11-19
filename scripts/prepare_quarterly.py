@@ -64,6 +64,7 @@ QUARTERLY_COLUMNS = [
     "quarter", "period_end", "claims", "grants", "refusals", "substantive_decisions",
     "withdrawals", "admin_outcomes", "enforced_returns", "voluntary_returns",
     "refused_entry_returns", "asylum_related_returns", "people_awaiting_initial_decision",
+    "main_applicants_awaiting_initial_decision",
 ]
 OUTCOME_GROUPS = {
     "grants": ("Grant of Protection", "Grant of Other Leave"),
@@ -142,7 +143,7 @@ def parse_quarterly_sources(paths):
     required = {
         "claims": (claims_data, {"Quarter", "Claims"}),
         "decisions": (decisions_data, {"Quarter", "Case outcome group", "Decisions"}),
-        "pending": (pending_data, {"Date (as at...)", "Application stage", "Claims"}),
+        "pending": (pending_data, {"Date (as at...)", "Application stage", "Applicant type", "Claims"}),
         "returns": (returns_data, {"Quarter", "Return type group", "Number of asylum-related returns"}),
     }
     for name, (data, columns) in required.items():
@@ -165,6 +166,9 @@ def parse_quarterly_sources(paths):
     )
     pending_data = pending_data.loc[pending_data["Application stage"] == "Pending initial decision"]
     pending = sum_by_quarter(pending_data, "Claims")
+    pending_main_applicants = sum_by_quarter(
+        pending_data.loc[pending_data["Applicant type"] == "Main Applicant"], "Claims"
+    )
 
     rows = []
     for quarter in quarters:
@@ -192,11 +196,11 @@ def parse_quarterly_sources(paths):
             **return_values,
             "asylum_related_returns": return_values["enforced_returns"] + return_values["voluntary_returns"],
             "people_awaiting_initial_decision": pending.get(quarter),
+            "main_applicants_awaiting_initial_decision": pending_main_applicants.get(quarter),
         })
     quarterly = pd.DataFrame(rows, columns=QUARTERLY_COLUMNS)
-    quarterly["people_awaiting_initial_decision"] = pd.array(
-        quarterly["people_awaiting_initial_decision"], dtype="Int64"
-    )
+    for column in ("people_awaiting_initial_decision", "main_applicants_awaiting_initial_decision"):
+        quarterly[column] = pd.array(quarterly[column], dtype="Int64")
     return quarterly
 
 
@@ -345,6 +349,31 @@ def validate_against_summary(quarterly, work_in_progress, support, tables):
     if latest_stock.empty or pd.isna(latest_stock.iloc[0]):
         raise ValueError("The pending-stock workbook is missing the June 2026 observation.")
     require_equal(int(latest_stock.iloc[0]), expected_stock, "June 2026 initial-decision stock does not reconcile")
+    if quarterly["main_applicants_awaiting_initial_decision"].isna().ne(
+        quarterly["people_awaiting_initial_decision"].isna()
+    ).any():
+        raise ValueError("The pending people and main-applicant series must cover the same quarters.")
+    observed_stock = quarterly["people_awaiting_initial_decision"].dropna()
+    observed_main_applicants = quarterly.loc[
+        quarterly["people_awaiting_initial_decision"].notna(), "main_applicants_awaiting_initial_decision"
+    ]
+    if observed_main_applicants.gt(observed_stock).any():
+        raise ValueError("Main-applicant pending cases cannot exceed the pending people count.")
+    main_applicant_2024 = quarterly.loc[
+        quarterly["quarter"] == "2024 Q2", "main_applicants_awaiting_initial_decision"
+    ]
+    if main_applicant_2024.empty or int(main_applicant_2024.iloc[0]) != 85839:
+        raise ValueError("The D03 June 2024 main-applicant pending count changed from 85,839.")
+    main_applicant_2026 = quarterly.loc[
+        quarterly["quarter"] == "2026 Q2", "main_applicants_awaiting_initial_decision"
+    ]
+    expected_cases = int(value_for(flows, "Cases awaiting an initial decision", latest_column))
+    if main_applicant_2026.empty:
+        raise ValueError("The pending-stock workbook is missing the June 2026 main-applicant observation.")
+    require_equal(
+        int(main_applicant_2026.iloc[0]), expected_cases,
+        "June 2026 main-applicant pending cases do not reconcile",
+    )
     wip = work_in_progress.loc[work_in_progress["Quarter"] == "2024 Q2", "Total Work In Progress"]
     if wip.empty or int(wip.iloc[0]) != 224742:
         raise ValueError("ASY_03 no longer reports 224,742 work-in-progress cases in June 2024.")

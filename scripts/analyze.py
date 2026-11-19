@@ -22,6 +22,7 @@ QUARTERLY_COLUMNS = [
     "quarter", "period_end", "claims", "grants", "refusals", "substantive_decisions",
     "withdrawals", "admin_outcomes", "enforced_returns", "voluntary_returns",
     "refused_entry_returns", "asylum_related_returns", "people_awaiting_initial_decision",
+    "main_applicants_awaiting_initial_decision",
 ]
 SUPPORT_COLUMNS = [
     "quarter", "period_end", "support_type", "accommodation_type", "uk_region", "people",
@@ -242,6 +243,12 @@ def validate_quarterly_data(tables, quarterly, work_in_progress):
         raise ValueError("The quarterly stock series should start in 2010 Q2, not 2010 Q1.")
     if quarterly["people_awaiting_initial_decision"].iloc[1:].isna().any():
         raise ValueError("The pending-stock workbook is missing one or more quarterly observations.")
+    people_pending = quarterly["people_awaiting_initial_decision"]
+    main_applicants_pending = quarterly["main_applicants_awaiting_initial_decision"]
+    if main_applicants_pending.isna().ne(people_pending.isna()).any():
+        raise ValueError("The pending people and main-applicant series must cover the same quarters.")
+    if main_applicants_pending.gt(people_pending).any():
+        raise ValueError("Main-applicant pending cases cannot exceed the pending people count.")
 
     flows = tables["Asy_00a"]
     measures = {
@@ -278,6 +285,17 @@ def validate_quarterly_data(tables, quarterly, work_in_progress):
     expected_stock = int(value_for(flows, "People awaiting an initial decision", "Year ending June 2026"))
     if latest_stock.empty or int(latest_stock.iloc[0]) != expected_stock:
         raise ValueError("Quarterly stock does not reconcile to the June 2026 Asy_00a headline.")
+    june_2024_main_applicants = quarterly.loc[
+        quarterly["quarter"] == "2024 Q2", "main_applicants_awaiting_initial_decision"
+    ]
+    if june_2024_main_applicants.empty or int(june_2024_main_applicants.iloc[0]) != 85839:
+        raise ValueError("D03 must report 85,839 main-applicant pending cases in June 2024.")
+    june_2026_main_applicants = quarterly.loc[
+        quarterly["quarter"] == "2026 Q2", "main_applicants_awaiting_initial_decision"
+    ]
+    expected_cases = int(value_for(flows, "Cases awaiting an initial decision", "Year ending June 2026"))
+    if june_2026_main_applicants.empty or int(june_2026_main_applicants.iloc[0]) != expected_cases:
+        raise ValueError("D03 main-applicant pending cases do not reconcile to Asy_00a in June 2026.")
 
     expected_wip_quarters = [f"{year} Q2" for year in range(2011, 2025)]
     if work_in_progress["Quarter"].tolist() != expected_wip_quarters:
@@ -593,6 +611,9 @@ def make_headlines(metadata, tables, quarterly, work_in_progress, support):
     latest_quarter = quarter_flows.iloc[-1]
     latest_work_in_progress = work_in_progress.iloc[-1]
     latest_wip_stages = work_in_progress_stages(work_in_progress).iloc[-1]
+    june_2024_pending = quarterly.loc[quarterly["quarter"] == "2024 Q2"].iloc[0]
+    june_2024_wip = work_in_progress.loc[work_in_progress["Quarter"] == "2024 Q2"].iloc[0]
+    june_2026_pending = quarterly.loc[quarterly["quarter"] == "2026 Q2"].iloc[0]
     accommodations = support_series(support)
     hotel_series = accommodations.dropna(subset=["hotel"])
     peak_hotel = hotel_series.loc[hotel_series["hotel"].idxmax()]
@@ -672,6 +693,32 @@ def make_headlines(metadata, tables, quarterly, work_in_progress, support):
             ),
             "not_awaiting_initial_decision_cases": int(latest_wip_stages["not_awaiting"]),
             "not_awaiting_initial_decision_share": float(latest_wip_stages["not_awaiting_share"]),
+        },
+        "awaiting_comparison": {
+            "june_2024": {
+                "people": int(june_2024_pending["people_awaiting_initial_decision"]),
+                "main_applicant_cases": int(june_2024_pending["main_applicants_awaiting_initial_decision"]),
+                "dependants": int(
+                    june_2024_pending["people_awaiting_initial_decision"]
+                    - june_2024_pending["main_applicants_awaiting_initial_decision"]
+                ),
+                "wip_awaiting_cases": int(june_2024_wip["Awaiting Initial Asylum Decision"]),
+                "wip_total_cases": int(june_2024_wip["Total Work In Progress"]),
+                "publication_difference_cases": abs(
+                    int(june_2024_wip["Awaiting Initial Asylum Decision"])
+                    - int(june_2024_pending["main_applicants_awaiting_initial_decision"])
+                ),
+            },
+            "june_2026": {
+                "people": int(june_2026_pending["people_awaiting_initial_decision"]),
+                "main_applicant_cases": int(
+                    june_2026_pending["main_applicants_awaiting_initial_decision"]
+                ),
+                "dependants": int(
+                    june_2026_pending["people_awaiting_initial_decision"]
+                    - june_2026_pending["main_applicants_awaiting_initial_decision"]
+                ),
+            },
         },
         "hotel_accommodation": {
             "peak_quarter": peak_hotel["quarter"],

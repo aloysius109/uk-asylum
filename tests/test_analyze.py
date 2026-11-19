@@ -182,6 +182,10 @@ def test_quarterly_flows_and_stock_reconcile_to_summary_and_preserve_units():
     assert latest["asylum_related_returns"] == 3157
     assert latest["rolling_12m_returns"] == 12568
     assert latest["people_awaiting_initial_decision"] == 40168
+    assert latest["main_applicants_awaiting_initial_decision"] == 32401
+    june_2024 = quarterly.loc[quarterly["quarter"] == "2024 Q2"].iloc[0]
+    assert june_2024["people_awaiting_initial_decision"] == 118882
+    assert june_2024["main_applicants_awaiting_initial_decision"] == 85839
     assert work_in_progress.loc[
         work_in_progress["Quarter"] == "2024 Q2", "Total Work In Progress"
     ].iloc[0] == 224742
