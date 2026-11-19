@@ -18,6 +18,7 @@ from analyze import (
     load_queue_indicators,
     load_support_data,
     load_tables,
+    load_unhcr_fvp_stages,
     parse_table,
     quarterly_flows_with_rolling_returns,
     support_series,
@@ -25,6 +26,10 @@ from analyze import (
     validate_queue_indicators,
     validate_support_data,
     validate_tables,
+    validate_unhcr_fvp_stages,
+    cohort_outcomes,
+    inadmissibility_nationality_series,
+    unhcr_fvp_reconciliation,
     value_for,
 )
 from prepare_quarterly import count_value, parse_work_in_progress  # noqa: E402
@@ -86,6 +91,9 @@ def test_all_chart_legends_are_outside_the_plot_area(monkeypatch):
     analyze.chart_age_assessments(tables)
     analyze.chart_small_boat_rates(tables)
     analyze.chart_inadmissibility_quarterly(tables)
+    analyze.chart_cohort_latest_outcomes(tables)
+    analyze.chart_cohort_grant_rates(tables)
+    analyze.chart_cohort_returns(tables)
     analyze.chart_waiting_times(tables)
     analyze.chart_hotel_accommodation(support)
     analyze.chart_hotel_regions(support)
@@ -106,7 +114,8 @@ def test_all_chart_legends_are_outside_the_plot_area(monkeypatch):
         "annual-claims-decisions", "small-boat-grant-rates", "inadmissibility-quarterly", "waiting-times",
         "hotel-accommodation", "hotel-by-region", "quarterly-flows-returns",
         "quarterly-claims-outcomes", "face-value-productivity", "decisions-minus-claims",
-        "fvp-grant-rate", "work-in-progress-stages", "queue-shift", "stock-vs-returns",
+        "fvp-grant-rate", "cohort-latest-outcomes", "cohort-grant-rates", "cohort-returns",
+        "work-in-progress-stages", "queue-shift", "stock-vs-returns",
     }
 
 
@@ -194,6 +203,58 @@ def test_inadmissibility_series_reconcile_and_report_event_ratios():
                  / series.iloc[-1]["cumulative_identified"] * 100, 1) == 1.0
 
 
+def test_inadmissibility_nationality_is_notices_only_and_reconciles_to_asye02e():
+    _, tables = load_tables()
+    validate_tables(tables)
+    notices = inadmissibility_nationality_series(tables)
+
+    assert notices.iloc[0]["nationality"] == "Afghanistan"
+    assert notices.iloc[0]["notices_of_intent"] == 12416
+    assert value_for(tables["Asy_02f"], "Other", "Total") == 148
+    assert notices["notices_of_intent"].sum() == 51228
+    assert value_for(tables["Asy_02e"], "Notice of intent issued", "Total") == 51228
+
+
+def test_claim_cohort_outcomes_reconcile_and_keep_unresolved_cases_visible():
+    _, tables = load_tables()
+    validate_tables(tables)
+    cohorts = cohort_outcomes(tables).set_index("year")
+
+    assert len(cohorts) == 16
+    assert round(cohorts.loc[2010, "initial_grant_rate"] * 100, 1) == 27.2
+    assert round(cohorts.loc[2010, "latest_grant_rate"] * 100, 1) == 50.0
+    assert round(cohorts.loc[2022, "initial_grant_rate"] * 100, 1) == 60.3
+    assert round(cohorts.loc[2022, "latest_grant_rate"] * 100, 1) == 68.0
+    assert cohorts.loc[2025, "claims"] == 82559
+    assert cohorts.loc[2025, "latest_outcome_not_yet_known"] == 9009
+    assert round(cohorts.loc[2025, "initial_grant_rate"] * 100, 1) == 44.5
+    assert round(cohorts.loc[2025, "latest_grant_rate"] * 100, 1) == 46.7
+    assert round(cohorts.loc[2025, "returns_per_100_latest_refusals"], 1) == 9.7
+    assert round(cohorts.loc[2010, "returns_per_100_latest_refusals"], 1) == 72.2
+    assert round(cohorts.loc[2022, "returns_per_100_latest_refusals"], 1) == 55.1
+    assert (
+        cohorts["latest_outcome_total"] + cohorts["latest_outcome_not_yet_known"]
+        == cohorts["claims"]
+    ).all()
+
+
+def test_unhcr_fvp_stage_counts_explain_the_2025_aggregate():
+    stages = load_unhcr_fvp_stages()
+    validate_unhcr_fvp_stages(stages)
+    quarterly, _ = load_quarterly_data()
+    result = unhcr_fvp_reconciliation(stages, quarterly)
+
+    assert result["unhcr_applications_all_stages"] == 168185
+    assert result["unhcr_decisions_all_stages"] == 194877
+    assert round(result["unhcr_fvp_all_stages_per_100"], 1) == 115.9
+    assert round(result["stage_values"]["FI"]["fvp_per_100"], 1) == 158.1
+    assert round(result["stage_values"]["AR"]["fvp_per_100"], 1) == 41.5
+    assert round(result["stage_values"]["RA"]["fvp_per_100"], 1) == 201.5
+    assert result["stage_values"]["AR"]["unit"] == "cases"
+    assert round(result["home_office_fvp_per_100"], 1) == 157.7
+    assert round(result["first_instance_fvp_difference_from_home_office"], 1) == 0.4
+
+
 def test_who_claims_age_groups_and_routes_use_the_correct_rows():
     _, tables = load_tables()
     uasc = age_group_rows(tables["Asy_01a"], "Unaccompanied asylum-seeking children (UASC)")
@@ -252,7 +313,7 @@ def test_suppressed_values_stay_missing_and_year_headers_are_normalised():
 
 def test_tables_parse_with_expected_headers_and_calendar_coverage():
     metadata, tables = load_tables()
-    assert len(tables) == len(SHEETS) == 18
+    assert len(tables) == len(SHEETS) == 19
     assert tables["Asy_00a"]["columns"][0] == "2010"
     assert "Year ending June 2026" in tables["Asy_00a"]["columns"]
     assert tables["Asy_02d"]["columns"][-1] == "Grant rate - year ending June 2026 (cases)"

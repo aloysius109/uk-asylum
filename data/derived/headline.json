@@ -102,6 +102,50 @@
       }
     }
   },
+  "unhcr_fvp_reconciliation": {
+    "year": 2025,
+    "unhcr_applications_all_stages": 168185,
+    "unhcr_decisions_all_stages": 194877,
+    "unhcr_fvp_all_stages_per_100": 115.87061866397121,
+    "stage_values": {
+      "FI": {
+        "applications": 100620,
+        "decisions": 159122,
+        "unit": "persons",
+        "fvp_per_100": 158.1415225601272
+      },
+      "AR": {
+        "applications": 62732,
+        "decisions": 26016,
+        "unit": "cases",
+        "fvp_per_100": 41.47165720844227
+      },
+      "RA": {
+        "applications": 4833,
+        "decisions": 9739,
+        "unit": "persons",
+        "fvp_per_100": 201.51044899648252
+      }
+    },
+    "home_office_claims": 101911,
+    "home_office_initial_outcomes": 160730,
+    "home_office_fvp_per_100": 157.71604635417177,
+    "first_instance_fvp_difference_from_home_office": 0.425476205955448
+  },
+  "cohorts": {
+    "cohort_years": 16,
+    "cohort_2010_initial_grant_rate": 0.271812729734958,
+    "cohort_2010_latest_grant_rate": 0.499708907432564,
+    "cohort_2022_initial_grant_rate": 0.603309455310768,
+    "cohort_2022_latest_grant_rate": 0.679666370359163,
+    "cohort_2025_claims": 82559,
+    "cohort_2025_latest_grants": 30022,
+    "cohort_2025_latest_refusals": 34332,
+    "cohort_2025_not_yet_known": 9009,
+    "cohort_2025_initial_grant_rate": 0.444638540123216,
+    "cohort_2025_latest_grant_rate": 0.466513348043634,
+    "cohort_2025_returns_per_100_latest_refusals": 9.661540253990445
+  },
   "children": {
     "children_decisions": 17529,
     "children_granted": 6518,
@@ -176,6 +220,12 @@
     "latest_identified": 1979,
     "latest_admitted": 981,
     "latest_removals": 650
+  },
+  "inadmissibility_nationality": {
+    "notices_total": 51228,
+    "top_nationality": "Afghanistan",
+    "top_nationality_notices": 12416,
+    "source_other": 148
   },
   "hotel_accommodation": {
     "peak_quarter": "2023 Q3",

@@ -8,11 +8,13 @@ from analyze import (
     load_queue_indicators,
     load_support_data,
     load_tables,
+    load_unhcr_fvp_stages,
     make_headlines,
     validate_quarterly_data,
     validate_queue_indicators,
     validate_support_data,
     validate_tables,
+    validate_unhcr_fvp_stages,
     work_in_progress_stages,
 )
 
@@ -33,7 +35,11 @@ def main():
     validate_support_data(tables, support)
     queue_indicators = load_queue_indicators()
     validate_queue_indicators(queue_indicators, work_in_progress)
-    headlines = make_headlines(metadata, tables, quarterly, work_in_progress, support, queue_indicators)
+    unhcr_fvp_stages = load_unhcr_fvp_stages()
+    validate_unhcr_fvp_stages(unhcr_fvp_stages)
+    headlines = make_headlines(
+        metadata, tables, quarterly, work_in_progress, support, queue_indicators, unhcr_fvp_stages
+    )
     annual = headlines["calendar_2025"]
     latest = headlines["year_ending_june_2026"]
     returns_and_stock = headlines["returns_and_stock"]
@@ -48,6 +54,9 @@ def main():
     wip_now = headlines["wip_now"]
     fvp = headlines["face_value_productivity"]
     fvp_grant_rate = headlines["fvp_grant_rate"]
+    unhcr_fvp = headlines["unhcr_fvp_reconciliation"]
+    cohorts = headlines["cohorts"]
+    inadmissibility_nationality = headlines["inadmissibility_nationality"]
 
     require(annual["people_claiming_asylum"] == 101911, "Calendar 2025 claims changed from the report headline.")
     require(round(annual["published_initial_grant_rate_main_applicants"] * 100, 1) == 42.1,
@@ -114,6 +123,31 @@ def main():
             and fvp_correlations["waiting_stock_same_year"] == {"pearson_r": 0.87, "n": 16}
             and fvp_correlations["withdrawal_admin_share_same_year"] == {"pearson_r": 0.82, "n": 16},
             "The FVP and grant-rate association figures changed.")
+    require(unhcr_fvp["unhcr_applications_all_stages"] == 168185
+            and unhcr_fvp["unhcr_decisions_all_stages"] == 194877
+            and round(unhcr_fvp["unhcr_fvp_all_stages_per_100"], 1) == 115.9
+            and round(unhcr_fvp["stage_values"]["FI"]["fvp_per_100"], 1) == 158.1
+            and round(unhcr_fvp["stage_values"]["AR"]["fvp_per_100"], 1) == 41.5
+            and round(unhcr_fvp["stage_values"]["RA"]["fvp_per_100"], 1) == 201.5
+            and round(unhcr_fvp["home_office_fvp_per_100"], 1) == 157.7
+            and round(unhcr_fvp["first_instance_fvp_difference_from_home_office"], 1) == 0.4,
+            "The UNHCR and Home Office FVP stage reconciliation changed.")
+    require(cohorts["cohort_years"] == 16
+            and round(cohorts["cohort_2010_initial_grant_rate"] * 100, 1) == 27.2
+            and round(cohorts["cohort_2010_latest_grant_rate"] * 100, 1) == 50.0
+            and round(cohorts["cohort_2022_initial_grant_rate"] * 100, 1) == 60.3
+            and round(cohorts["cohort_2022_latest_grant_rate"] * 100, 1) == 68.0
+            and cohorts["cohort_2025_claims"] == 82559
+            and cohorts["cohort_2025_not_yet_known"] == 9009
+            and round(cohorts["cohort_2025_initial_grant_rate"] * 100, 1) == 44.5
+            and round(cohorts["cohort_2025_latest_grant_rate"] * 100, 1) == 46.7
+            and round(cohorts["cohort_2025_returns_per_100_latest_refusals"], 1) == 9.7,
+            "The claim-cohort outcome figures changed.")
+    require(inadmissibility_nationality["notices_total"] == 51228
+            and inadmissibility_nationality["top_nationality"] == "Afghanistan"
+            and inadmissibility_nationality["top_nationality_notices"] == 12416
+            and inadmissibility_nationality["source_other"] == 148,
+            "The inadmissibility notice nationality figures changed.")
     require(children["children_decisions"] == 17529
             and children["children_granted"] == 6518
             and children["children_refused"] == 11011
@@ -191,7 +225,11 @@ def main():
         "156.6 per 100", "63,933 below claims", "58,819 above claims", "−46,892",
         "not an estimate of the current backlog", "may include legacy claims from before this series begins",
         "staff productivity or waiting-time measures", "only from 2020",
-        "2025 UK FVP estimate of 116", "not directly comparable with this Home Office series",
+        "Why does Asylum Tracker show 116 for UK 2025?", "Both measures express recorded decisions per 100 applications",
+        "Appeal/review (AR) | 62,732 | 26,016 | Cases", "| All three procedures | 168,185 | 194,877 | Mixed | 115.9 |",
+        "first instance alone: **158.1 per 100 applications**", "only 0.4 points above the Home Office’s calendar-2025 **157.7**",
+        "adds persons and cases without conversion", "not like-for-like totals",
+        "report’s **156.6** figure is for the separate rolling year ending June 2026",
         "Pearson correlation between FVP and the Home Office’s published initial grant rate is **−0.42**",
         "**−0.72**, 15 year-pairs", "excluding grant-rate years 2022–23",
         "year-end vs grant rate in the same year", "Withdrawals and administrative outcomes count in FVP",
@@ -238,7 +276,11 @@ def main():
         "33,227 in June 2024", "cannot be added to estimate WIP",
         "published data do not establish which", "32,401 main-applicant cases",
         "FIA_4", "different coverage and are not additive", "2016 Q4 to 2026 Q2",
-        "2010 Q1 to 2026 Q2",
+        "2010 Q1 to 2026 Q2", "provides a nationality breakdown for **notices of intent only** in `Asy_02f`",
+        "**51,228 notice events**", "Afghanistan (**12,416**)", "not a count of distinct people",
+        "27.2% at initial decision to 50.0% on the latest known substantive outcomes", "60.3% to 68.0%",
+        "9,009 of its 82,559 claims", "latest outcome recorded",
+        "returns recorded against each claim-year cohort", "not a person-level return rate",
         "z", "2011 claim total in `Asy_00a` differs by six from `Asy_01a`",
     ]
     for claim in claims:
@@ -254,6 +296,9 @@ def main():
         "data/derived/quarterly-flows.csv",
         "data/derived/face-value-productivity.csv",
         "data/derived/fvp-grant-rate.csv",
+        "data/derived/cohort-outcomes.csv",
+        "data/derived/inadmissibility-nationality.csv",
+        "data/raw/unhcr-gbr-fvp-stages.csv",
         "data/raw/asylum-work-in-progress.csv",
         "data/derived/work-in-progress-stages.csv",
         "data/derived/queue-indicators.csv",
@@ -269,7 +314,7 @@ def main():
     require(len(download) == 2, "Download section is missing.")
     content = download[1].split("\n## Related reports", 1)[0]
     links = re.findall(r"\[[^\]]+\]\(([^)]+)\)", content)
-    require(len(links) == 17, "Expected seventeen reader-facing data download links.")
+    require(len(links) == 20, "Expected twenty reader-facing data download links.")
     for link in links:
         require((ROOT / link).is_file(), f"Download target does not exist: {link}")
 
@@ -280,6 +325,8 @@ def main():
         "waiting-times.svg", "asylum-support.svg", "quarterly-flows-returns.svg",
         "quarterly-claims-outcomes.svg", "face-value-productivity.svg", "decisions-minus-claims.svg",
         "fvp-grant-rate.svg",
+        "inadmissibility-nationality.svg", "cohort-latest-outcomes.svg", "cohort-grant-rates.svg",
+        "cohort-returns.svg",
         "stock-vs-returns.svg",
         "hotel-accommodation.svg", "hotel-by-region.svg", "work-in-progress-stages.svg",
         "inadmissibility-quarterly.svg", "inadmissibility-totals.svg", "queue-shift.svg",
@@ -287,7 +334,7 @@ def main():
         require((ROOT / "assets" / chart).is_file(), f"Expected report chart is missing: {chart}")
         require(f"assets/{chart}" in report, f"Report does not reference its chart: {chart}")
 
-    print("Report QA passed: pinned figures, unit distinctions, twenty-five charts and seventeen downloads are consistent.")
+    print("Report QA passed: pinned figures, unit distinctions, twenty-nine charts and twenty downloads are consistent.")
 
 
 if __name__ == "__main__":

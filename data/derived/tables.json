@@ -3140,6 +3140,483 @@
         }
       ]
     },
+    "Asy_02f": {
+      "title": "Asy_02f: Notices of intent issued, by nationality, 1 January 2021 to 30 June 2026 [Notes 1, 2, 3, 4, 5, 15, 16, 30, 31, 32, 33]",
+      "header": "Nationality",
+      "columns": [
+        "Total"
+      ],
+      "rows": [
+        {
+          "label": "Afghanistan",
+          "values": {
+            "Total": 12416
+          }
+        },
+        {
+          "label": "Syria",
+          "values": {
+            "Total": 4964
+          }
+        },
+        {
+          "label": "Eritrea",
+          "values": {
+            "Total": 4658
+          }
+        },
+        {
+          "label": "Iran",
+          "values": {
+            "Total": 4574
+          }
+        },
+        {
+          "label": "Albania",
+          "values": {
+            "Total": 3841
+          }
+        },
+        {
+          "label": "Iraq",
+          "values": {
+            "Total": 3219
+          }
+        },
+        {
+          "label": "Sudan",
+          "values": {
+            "Total": 2824
+          }
+        },
+        {
+          "label": "El Salvador",
+          "values": {
+            "Total": 1461
+          }
+        },
+        {
+          "label": "Vietnam",
+          "values": {
+            "Total": 1262
+          }
+        },
+        {
+          "label": "Somalia",
+          "values": {
+            "Total": 1171
+          }
+        },
+        {
+          "label": "Turkey",
+          "values": {
+            "Total": 1170
+          }
+        },
+        {
+          "label": "Georgia",
+          "values": {
+            "Total": 1106
+          }
+        },
+        {
+          "label": "India",
+          "values": {
+            "Total": 917
+          }
+        },
+        {
+          "label": "Refugee",
+          "values": {
+            "Total": 882
+          }
+        },
+        {
+          "label": "Egypt",
+          "values": {
+            "Total": 812
+          }
+        },
+        {
+          "label": "Yemen",
+          "values": {
+            "Total": 739
+          }
+        },
+        {
+          "label": "Honduras",
+          "values": {
+            "Total": 601
+          }
+        },
+        {
+          "label": "Ethiopia",
+          "values": {
+            "Total": 558
+          }
+        },
+        {
+          "label": "Palestine",
+          "values": {
+            "Total": 433
+          }
+        },
+        {
+          "label": "Sri Lanka",
+          "values": {
+            "Total": 337
+          }
+        },
+        {
+          "label": "Pakistan",
+          "values": {
+            "Total": 297
+          }
+        },
+        {
+          "label": "Kuwait",
+          "values": {
+            "Total": 271
+          }
+        },
+        {
+          "label": "Libya",
+          "values": {
+            "Total": 247
+          }
+        },
+        {
+          "label": "Stateless",
+          "values": {
+            "Total": 231
+          }
+        },
+        {
+          "label": "South Sudan",
+          "values": {
+            "Total": 208
+          }
+        },
+        {
+          "label": "Algeria",
+          "values": {
+            "Total": 165
+          }
+        },
+        {
+          "label": "China",
+          "values": {
+            "Total": 154
+          }
+        },
+        {
+          "label": "Namibia",
+          "values": {
+            "Total": 149
+          }
+        },
+        {
+          "label": "Brazil",
+          "values": {
+            "Total": 137
+          }
+        },
+        {
+          "label": "Nicaragua",
+          "values": {
+            "Total": 130
+          }
+        },
+        {
+          "label": "Chad",
+          "values": {
+            "Total": 90
+          }
+        },
+        {
+          "label": "Ukraine",
+          "values": {
+            "Total": 81
+          }
+        },
+        {
+          "label": "Morocco",
+          "values": {
+            "Total": 77
+          }
+        },
+        {
+          "label": "Nigeria",
+          "values": {
+            "Total": 77
+          }
+        },
+        {
+          "label": "Azerbaijan",
+          "values": {
+            "Total": 51
+          }
+        },
+        {
+          "label": "Tunisia",
+          "values": {
+            "Total": 47
+          }
+        },
+        {
+          "label": "Bolivia",
+          "values": {
+            "Total": 46
+          }
+        },
+        {
+          "label": "Sierra Leone",
+          "values": {
+            "Total": 44
+          }
+        },
+        {
+          "label": "Colombia",
+          "values": {
+            "Total": 42
+          }
+        },
+        {
+          "label": "Jordan",
+          "values": {
+            "Total": 42
+          }
+        },
+        {
+          "label": "Russia",
+          "values": {
+            "Total": 42
+          }
+        },
+        {
+          "label": "Guinea",
+          "values": {
+            "Total": 39
+          }
+        },
+        {
+          "label": "Tanzania",
+          "values": {
+            "Total": 37
+          }
+        },
+        {
+          "label": "Gambia, The",
+          "values": {
+            "Total": 31
+          }
+        },
+        {
+          "label": "Botswana",
+          "values": {
+            "Total": 30
+          }
+        },
+        {
+          "label": "Lebanon",
+          "values": {
+            "Total": 29
+          }
+        },
+        {
+          "label": "Tajikistan",
+          "values": {
+            "Total": 28
+          }
+        },
+        {
+          "label": "Senegal",
+          "values": {
+            "Total": 27
+          }
+        },
+        {
+          "label": "Mexico",
+          "values": {
+            "Total": 24
+          }
+        },
+        {
+          "label": "Uganda",
+          "values": {
+            "Total": 21
+          }
+        },
+        {
+          "label": "Cameroon",
+          "values": {
+            "Total": 18
+          }
+        },
+        {
+          "label": "Guatemala",
+          "values": {
+            "Total": 18
+          }
+        },
+        {
+          "label": "Bangladesh",
+          "values": {
+            "Total": 18
+          }
+        },
+        {
+          "label": "Ecuador",
+          "values": {
+            "Total": 14
+          }
+        },
+        {
+          "label": "Congo (Democratic Republic)",
+          "values": {
+            "Total": 12
+          }
+        },
+        {
+          "label": "South Africa",
+          "values": {
+            "Total": 11
+          }
+        },
+        {
+          "label": "Mauritius",
+          "values": {
+            "Total": 11
+          }
+        },
+        {
+          "label": "United States",
+          "values": {
+            "Total": 11
+          }
+        },
+        {
+          "label": "Ghana",
+          "values": {
+            "Total": 11
+          }
+        },
+        {
+          "label": "Mali",
+          "values": {
+            "Total": 10
+          }
+        },
+        {
+          "label": "Ivory Coast",
+          "values": {
+            "Total": 10
+          }
+        },
+        {
+          "label": "Malaysia",
+          "values": {
+            "Total": 10
+          }
+        },
+        {
+          "label": "Burkina Faso",
+          "values": {
+            "Total": 8
+          }
+        },
+        {
+          "label": "Angola",
+          "values": {
+            "Total": 8
+          }
+        },
+        {
+          "label": "Myanmar (Burma)",
+          "values": {
+            "Total": 7
+          }
+        },
+        {
+          "label": "Kosovo",
+          "values": {
+            "Total": 7
+          }
+        },
+        {
+          "label": "Sweden",
+          "values": {
+            "Total": 7
+          }
+        },
+        {
+          "label": "Zimbabwe",
+          "values": {
+            "Total": 7
+          }
+        },
+        {
+          "label": "Venezuela",
+          "values": {
+            "Total": 6
+          }
+        },
+        {
+          "label": "Hong Kong",
+          "values": {
+            "Total": 6
+          }
+        },
+        {
+          "label": "Kazakhstan",
+          "values": {
+            "Total": 6
+          }
+        },
+        {
+          "label": "Burundi",
+          "values": {
+            "Total": 5
+          }
+        },
+        {
+          "label": "Cuba",
+          "values": {
+            "Total": 5
+          }
+        },
+        {
+          "label": "Uzbekistan",
+          "values": {
+            "Total": 5
+          }
+        },
+        {
+          "label": "Togo",
+          "values": {
+            "Total": 5
+          }
+        },
+        {
+          "label": "Peru",
+          "values": {
+            "Total": 5
+          }
+        },
+        {
+          "label": "Other",
+          "values": {
+            "Total": 148
+          }
+        },
+        {
+          "label": "Total",
+          "values": {
+            "Total": 51228
+          }
+        }
+      ]
+    },
     "Asy_03a": {
       "title": "Asy_03a: Number of people awaiting an initial decision, by duration, as at December 2010 to as at June 2026 [Notes 1, 2, 3, 4, 7, 36]",
       "header": "As at end of...",

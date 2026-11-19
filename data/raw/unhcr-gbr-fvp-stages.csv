@@ -1,0 +1,16 @@
+year,stage,applications,decisions,unit,source
+2021,FI,56466,20300,persons,Asylum Tracker UNHCR asylum-applications.csv and asylum-decisions.csv
+2021,AR,4025,3867,cases,Asylum Tracker UNHCR asylum-applications.csv and asylum-decisions.csv
+2021,RA,459,59,persons,Asylum Tracker UNHCR asylum-applications.csv and asylum-decisions.csv
+2022,FI,89393,29108,persons,Asylum Tracker UNHCR asylum-applications.csv and asylum-decisions.csv
+2022,AR,3784,3657,cases,Asylum Tracker UNHCR asylum-applications.csv and asylum-decisions.csv
+2022,RA,1552,139,persons,Asylum Tracker UNHCR asylum-applications.csv and asylum-decisions.csv
+2023,FI,84416,118726,persons,Asylum Tracker UNHCR asylum-applications.csv and asylum-decisions.csv
+2023,AR,1250,1201,cases,Asylum Tracker UNHCR asylum-applications.csv and asylum-decisions.csv
+2023,RA,3614,5133,persons,Asylum Tracker UNHCR asylum-applications.csv and asylum-decisions.csv
+2024,FI,108136,101719,persons,Asylum Tracker UNHCR asylum-applications.csv and asylum-decisions.csv
+2024,AR,,,cases,Asylum Tracker UNHCR asylum-applications.csv and asylum-decisions.csv
+2024,RA,2971,4532,persons,Asylum Tracker UNHCR asylum-applications.csv and asylum-decisions.csv
+2025,FI,100620,159122,persons,Asylum Tracker UNHCR asylum-applications.csv and asylum-decisions.csv
+2025,AR,62732,26016,cases,Asylum Tracker UNHCR asylum-applications.csv and asylum-decisions.csv
+2025,RA,4833,9739,persons,Asylum Tracker UNHCR asylum-applications.csv and asylum-decisions.csv

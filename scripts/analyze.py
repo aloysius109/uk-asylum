@@ -16,6 +16,8 @@ ROOT = Path(__file__).resolve().parents[1]
 WORKBOOK = ROOT / "data" / "raw" / "asylum-summary-jun-2026.ods"
 SOURCE = ROOT / "data" / "raw" / "source.json"
 QUARTERLY_MANIFEST = ROOT / "data" / "raw" / "quarterly-sources.json"
+UNHCR_FVP_FILE = ROOT / "data" / "raw" / "unhcr-gbr-fvp-stages.csv"
+UNHCR_FVP_SHA256 = "41d6afcb6204295f3751162b766ae1e96e6a4cecb24b4cc0d91832dcd3f87210"
 ASSETS = ROOT / "assets"
 DERIVED = ROOT / "data" / "derived"
 QUARTERLY_COLUMNS = [
@@ -43,6 +45,12 @@ INADMISSIBILITY_ROWS = {
     "removals": "Removals",
     "subsequently_admitted": "Subsequently admitted into UK asylum process",
 }
+COHORT_ROW_LABELS = [
+    "Total claims", "Initial decisions", "Grants of protection or other leave", "Refusals",
+    "Estimated grant rate at initial decision", "Returns", "Enforced returns", "Voluntary returns",
+    "Total latest outcome", "Grants of protection or other leave", "Refusals", "Withdrawn claims",
+    "Administrative outcomes", "Latest outcome not yet known", "Estimated latest grant rate",
+]
 
 SHEETS = {
     "Asy_00a": "Date / As at the end of...",
@@ -56,6 +64,7 @@ SHEETS = {
     "Asy_02c": "Outcome",
     "Asy_02d": "Nationality",
     "Asy_02e": "Date",
+    "Asy_02f": "Nationality",
     "Asy_03a": "As at end of...",
     "Asy_03b": "As at...",
     "Asy_03c": "As at...",
@@ -261,6 +270,46 @@ def load_queue_indicators():
     if list(queue.columns) != QUEUE_INDICATOR_COLUMNS:
         raise ValueError("The queue-indicator extract has unexpected or missing columns.")
     return queue
+
+
+def load_unhcr_fvp_stages():
+    if not UNHCR_FVP_FILE.is_file():
+        raise ValueError(f"Pinned UNHCR FVP data file is missing: {UNHCR_FVP_FILE}.")
+    actual_hash = hashlib.sha256(UNHCR_FVP_FILE.read_bytes()).hexdigest()
+    if actual_hash != UNHCR_FVP_SHA256:
+        raise ValueError("Pinned UNHCR FVP data SHA-256 does not match the reviewed extract.")
+
+    data = pd.read_csv(UNHCR_FVP_FILE)
+    expected_columns = ["year", "stage", "applications", "decisions", "unit", "source"]
+    if list(data.columns) != expected_columns:
+        raise ValueError("The pinned UNHCR FVP extract has unexpected or missing columns.")
+    data["year"] = pd.to_numeric(data["year"], errors="raise").astype(int)
+    for column in ("applications", "decisions"):
+        data[column] = pd.to_numeric(data[column], errors="coerce")
+    return data
+
+
+def validate_unhcr_fvp_stages(data):
+    expected_rows = {(year, stage) for year in range(2021, 2026) for stage in ("FI", "AR", "RA")}
+    if set(zip(data["year"], data["stage"])) != expected_rows or data.duplicated(["year", "stage"]).any():
+        raise ValueError("The UNHCR FVP extract must have one row per UK stage and year, 2021–2025.")
+    if set(data["unit"]) != {"persons", "cases"}:
+        raise ValueError("The UNHCR FVP extract must distinguish person- and case-based stages.")
+    expected_missing = data["stage"].eq("AR") & data["year"].eq(2024)
+    missing = data[["applications", "decisions"]].isna().any(axis=1)
+    if not missing.equals(expected_missing):
+        raise ValueError("Only the 2024 UNHCR appeal/review stage may be absent from the pinned extract.")
+    observed = data.loc[~expected_missing, ["applications", "decisions"]]
+    if observed.isna().any().any() or (observed < 0).any().any():
+        raise ValueError("UNHCR stage counts must be non-negative and present when published.")
+    if data.loc[data["stage"].eq("AR"), "unit"].ne("cases").any():
+        raise ValueError("UNHCR appeal/review figures must retain their case-based unit.")
+    if data.loc[data["stage"].isin(["FI", "RA"]), "unit"].ne("persons").any():
+        raise ValueError("UNHCR first-instance and repeat figures must retain their person-based unit.")
+
+    latest = data.loc[data["year"].eq(2025)].set_index("stage")
+    if int(latest["applications"].sum()) != 168185 or int(latest["decisions"].sum()) != 194877:
+        raise ValueError("The 2025 UNHCR UK stage totals differ from the reviewed figures.")
 
 
 def validate_quarterly_data(tables, quarterly, work_in_progress):
@@ -740,6 +789,40 @@ def validate_tables(tables):
         if row_total != inadmissibility_count(inadmissibility, label, "Total"):
             raise ValueError(f"Asy_02e quarterly values do not reconcile for {label}.")
 
+    nationality_notices = tables["Asy_02f"]
+    nationality_labels = [row["label"] for row in nationality_notices["rows"] if row["label"] != "Total"]
+    nationality_total = sum(
+        numeric(value_for(nationality_notices, label, "Total"), f"notices for {label}")
+        for label in nationality_labels
+    )
+    published_notices = numeric(value_for(nationality_notices, "Total", "Total"), "Asy_02f total notices")
+    if nationality_total != published_notices:
+        raise ValueError("Asy_02f nationality totals do not reconcile to its published total.")
+    if published_notices != numeric(value_for(inadmissibility, "Notice of intent issued", "Total"),
+                                     "Asy_02e notice total"):
+        raise ValueError("Asy_02f notices by nationality do not reconcile to Asy_02e.")
+
+    cohorts = cohort_outcomes(tables)
+    for _, cohort in cohorts.iterrows():
+        year = int(cohort["year"])
+        if cohort["initial_grants"] + cohort["initial_refusals"] != cohort["initial_decisions"]:
+            raise ValueError(f"Asy_04 initial decisions do not reconcile for the {year} cohort.")
+        latest_parts = (
+            cohort["latest_grants"] + cohort["latest_refusals"] + cohort["withdrawn_claims"]
+            + cohort["administrative_outcomes"]
+        )
+        if latest_parts != cohort["latest_outcome_total"]:
+            raise ValueError(f"Asy_04 latest outcomes do not reconcile for the {year} cohort.")
+        if cohort["latest_outcome_total"] + cohort["latest_outcome_not_yet_known"] != cohort["claims"]:
+            raise ValueError(f"Asy_04 latest outcomes and unknown cases do not reconcile for the {year} cohort.")
+        if cohort["enforced_returns"] + cohort["voluntary_returns"] != cohort["returns"]:
+            raise ValueError(f"Asy_04 returns do not reconcile for the {year} cohort.")
+        if not math.isclose(cohort["initial_grant_rate"], cohort["initial_grants"] / cohort["initial_decisions"]):
+            raise ValueError(f"Asy_04 initial grant rate does not reconcile for the {year} cohort.")
+        known_substantive = cohort["latest_grants"] + cohort["latest_refusals"]
+        if not math.isclose(cohort["latest_grant_rate"], cohort["latest_grants"] / known_substantive):
+            raise ValueError(f"Asy_04 latest grant rate does not reconcile for the {year} cohort.")
+
     small_boat_rates = tables["Asy_02d"]
     for label in ("Grant rate - year ending June 2025 (cases)", "Grant rate - year ending June 2026 (cases)"):
         total = numeric(value_for(small_boat_rates, "All nationalities", label), label)
@@ -813,7 +896,87 @@ def inadmissibility_series(tables):
     return result
 
 
-def make_headlines(metadata, tables, quarterly, work_in_progress, support, queue_indicators):
+def inadmissibility_nationality_series(tables):
+    table = tables["Asy_02f"]
+    records = [
+        {"nationality": row["label"], "notices_of_intent": numeric(
+            value_for(table, row["label"], "Total"), f"notices for {row['label']}"
+        )}
+        for row in table["rows"] if row["label"] != "Total"
+    ]
+    result = pd.DataFrame(records).sort_values("notices_of_intent", ascending=False).reset_index(drop=True)
+    total = int(value_for(table, "Total", "Total"))
+    result["share_of_notices"] = result["notices_of_intent"] / total
+    return result
+
+
+def cohort_outcomes(tables):
+    table = tables["Asy_04"]
+    if [row["label"] for row in table["rows"][:len(COHORT_ROW_LABELS)]] != COHORT_ROW_LABELS:
+        raise ValueError("Asy_04 outcome rows have changed order; cohort outcomes require positional labels.")
+    records = []
+    for year in range(2010, 2026):
+        column = str(year)
+        values = [numeric(row["values"][column], f"Asy_04 row {index} in {year}")
+                  for index, row in enumerate(table["rows"][:len(COHORT_ROW_LABELS)])]
+        claims = int(values[0])
+        latest_refusals = int(values[10])
+        records.append({
+            "year": year,
+            "claims": claims,
+            "initial_decisions": int(values[1]),
+            "initial_grants": int(values[2]),
+            "initial_refusals": int(values[3]),
+            "initial_grant_rate": values[4],
+            "returns": int(values[5]),
+            "enforced_returns": int(values[6]),
+            "voluntary_returns": int(values[7]),
+            "latest_outcome_total": int(values[8]),
+            "latest_grants": int(values[9]),
+            "latest_refusals": latest_refusals,
+            "withdrawn_claims": int(values[11]),
+            "administrative_outcomes": int(values[12]),
+            "latest_outcome_not_yet_known": int(values[13]),
+            "latest_grant_rate": values[14],
+            "returns_per_100_latest_refusals": (
+                int(values[5]) / latest_refusals * 100 if latest_refusals else None
+            ),
+            "not_yet_known_share": int(values[13]) / claims,
+            "claims_without_initial_decision": claims - int(values[1]),
+        })
+    return pd.DataFrame(records)
+
+
+def unhcr_fvp_reconciliation(stages, quarterly):
+    year = stages.loc[stages["year"].eq(2025)].set_index("stage")
+    fvp = face_value_productivity(quarterly).set_index("period").loc["2025"]
+    unhcr_applications = int(year["applications"].sum())
+    unhcr_decisions = int(year["decisions"].sum())
+    stage_values = {
+        stage: {
+            "applications": int(year.loc[stage, "applications"]),
+            "decisions": int(year.loc[stage, "decisions"]),
+            "unit": year.loc[stage, "unit"],
+            "fvp_per_100": float(year.loc[stage, "decisions"] / year.loc[stage, "applications"] * 100),
+        }
+        for stage in ("FI", "AR", "RA")
+    }
+    return {
+        "year": 2025,
+        "unhcr_applications_all_stages": unhcr_applications,
+        "unhcr_decisions_all_stages": unhcr_decisions,
+        "unhcr_fvp_all_stages_per_100": unhcr_decisions / unhcr_applications * 100,
+        "stage_values": stage_values,
+        "home_office_claims": int(fvp["claims"]),
+        "home_office_initial_outcomes": int(fvp["all_initial_outcomes"]),
+        "home_office_fvp_per_100": float(fvp["fvp_all_per_100"]),
+        "first_instance_fvp_difference_from_home_office": (
+            stage_values["FI"]["fvp_per_100"] - float(fvp["fvp_all_per_100"])
+        ),
+    }
+
+
+def make_headlines(metadata, tables, quarterly, work_in_progress, support, queue_indicators, unhcr_fvp_stages):
     small_boat = tables["Asy_02d"]
     nationality_table = tables["Asy_01b"]
     nationality_latest = "Year ending June 2026"
@@ -839,6 +1002,13 @@ def make_headlines(metadata, tables, quarterly, work_in_progress, support, queue
     inadmissibility = inadmissibility_series(tables)
     inadmissibility_totals = inadmissibility.iloc[-1]
     inadmissibility_identified = int(inadmissibility_totals["cumulative_identified"])
+    nationality_notices = inadmissibility_nationality_series(tables)
+    top_inadmissibility_nationality = nationality_notices.iloc[0]
+    cohort_data = cohort_outcomes(tables).set_index("year")
+    cohort_2010 = cohort_data.loc[2010]
+    cohort_2022 = cohort_data.loc[2022]
+    cohort_2025 = cohort_data.loc[2025]
+    unhcr_fvp = unhcr_fvp_reconciliation(unhcr_fvp_stages, quarterly)
     fvp = face_value_productivity(quarterly).set_index("period")
     fvp_grant = fvp_grant_rate_association(tables, quarterly)
     fvp_grant_correlations = fvp_grant_rate_correlations(fvp_grant)
@@ -917,6 +1087,23 @@ def make_headlines(metadata, tables, quarterly, work_in_progress, support, queue
             "fvp_2022": float(fvp_grant.loc[fvp_grant["year"] == 2022, "fvp_all_per_100"].iloc[0]),
             "grant_rate_2022": float(fvp_grant.loc[fvp_grant["year"] == 2022, "published_grant_rate"].iloc[0]),
             "correlations": fvp_grant_correlations,
+        },
+        "unhcr_fvp_reconciliation": unhcr_fvp,
+        "cohorts": {
+            "cohort_years": int(len(cohort_data)),
+            "cohort_2010_initial_grant_rate": float(cohort_2010["initial_grant_rate"]),
+            "cohort_2010_latest_grant_rate": float(cohort_2010["latest_grant_rate"]),
+            "cohort_2022_initial_grant_rate": float(cohort_2022["initial_grant_rate"]),
+            "cohort_2022_latest_grant_rate": float(cohort_2022["latest_grant_rate"]),
+            "cohort_2025_claims": int(cohort_2025["claims"]),
+            "cohort_2025_latest_grants": int(cohort_2025["latest_grants"]),
+            "cohort_2025_latest_refusals": int(cohort_2025["latest_refusals"]),
+            "cohort_2025_not_yet_known": int(cohort_2025["latest_outcome_not_yet_known"]),
+            "cohort_2025_initial_grant_rate": float(cohort_2025["initial_grant_rate"]),
+            "cohort_2025_latest_grant_rate": float(cohort_2025["latest_grant_rate"]),
+            "cohort_2025_returns_per_100_latest_refusals": float(
+                cohort_2025["returns_per_100_latest_refusals"]
+            ),
         },
         "children": {
             "children_decisions": value_for(children_table, "Children receiving initial decisions", latest),
@@ -1024,6 +1211,12 @@ def make_headlines(metadata, tables, quarterly, work_in_progress, support, queue
             "latest_identified": int(inadmissibility.iloc[-1]["identified"]),
             "latest_admitted": int(inadmissibility.iloc[-1]["subsequently_admitted"]),
             "latest_removals": int(inadmissibility.iloc[-1]["removals"]),
+        },
+        "inadmissibility_nationality": {
+            "notices_total": int(nationality_notices["notices_of_intent"].sum()),
+            "top_nationality": top_inadmissibility_nationality["nationality"],
+            "top_nationality_notices": int(top_inadmissibility_nationality["notices_of_intent"]),
+            "source_other": int(value_for(tables["Asy_02f"], "Other", "Total")),
         },
         "hotel_accommodation": {
             "peak_quarter": peak_hotel["quarter"],
@@ -1453,6 +1646,110 @@ def chart_inadmissibility_totals(tables):
     save_chart(fig, "inadmissibility-totals")
 
 
+def chart_inadmissibility_nationality(tables):
+    data = inadmissibility_nationality_series(tables)
+    listed = data.loc[~data["nationality"].isin(["Other", "Total"])].head(15).copy()
+    other_count = int(data.loc[~data["nationality"].isin(listed["nationality"]), "notices_of_intent"].sum())
+    plotted = pd.concat([
+        listed,
+        pd.DataFrame([{"nationality": "All other", "notices_of_intent": other_count}]),
+    ], ignore_index=True).sort_values("notices_of_intent")
+    fig, ax = plt.subplots(figsize=(10.5, 6.4), layout="constrained")
+    positions = list(range(len(plotted)))
+    values = plotted["notices_of_intent"].astype(int).tolist()
+    ax.barh(positions, values, color=[TEAL if label != "All other" else MUTED
+                                      for label in plotted["nationality"]], height=.68)
+    maximum = max(values)
+    for position, value in zip(positions, values):
+        ax.text(value + maximum * .012, position, f"{value:,}", va="center", ha="left", fontsize=8.5, color=INK)
+    ax.set_yticks(positions, plotted["nationality"])
+    ax.set_xlim(0, maximum * 1.18)
+    ax.set_xlabel("Notices of intent issued, 2021 Q1–2026 Q2", color=MUTED)
+    format_count_axis(ax.xaxis, maximum)
+    ax.set_title("Notices of intent by nationality", loc="left", color=INK, fontsize=15, pad=14)
+    ax.xaxis.grid(True, color=GRID, linewidth=.8)
+    ax.yaxis.grid(False)
+    ax.spines[["top", "right", "left", "bottom"]].set_visible(False)
+    ax.tick_params(axis="both", colors=MUTED, labelsize=8.5, length=0, pad=6)
+    ax.set_axisbelow(True)
+    save_chart(fig, "inadmissibility-nationality")
+
+
+def chart_cohort_latest_outcomes(tables):
+    data = cohort_outcomes(tables)
+    categories = [
+        ("latest_grants", "Latest grant", TEAL, None),
+        ("latest_refusals", "Latest refusal", "#b95f4b", None),
+        ("withdrawn_claims", "Withdrawn", GOLD, None),
+        ("administrative_outcomes", "Administrative outcome", PURPLE, None),
+        ("latest_outcome_not_yet_known", "Not yet known", "#cbd5d0", "///"),
+    ]
+    years = data["year"].astype(str).tolist()
+    claims = data["claims"].to_numpy()
+    positions = list(range(len(data)))
+    fig, ax = plt.subplots(figsize=(11, 5.2), layout="constrained")
+    bottom = pd.Series(0.0, index=data.index)
+    for column, label, color, hatch in categories:
+        shares = data[column].to_numpy() / claims * 100
+        ax.bar(positions, shares, bottom=bottom, color=color, edgecolor="white", linewidth=.35,
+               hatch=hatch, width=.76, label=label)
+        bottom += shares
+    ax.set_xticks(positions, years, rotation=45, ha="right")
+    ax.set_ylim(0, 100)
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda value, _: f"{value:.0f}%"))
+    ax.set_ylabel("Share of cohort claims", color=MUTED)
+    ax.set_title("Latest recorded outcome by year of claim", loc="left", color=INK, fontsize=15, pad=14)
+    style_axis(ax)
+    add_legend(fig, ax, ncol=3, fontsize=8)
+    save_chart(fig, "cohort-latest-outcomes")
+
+
+def chart_cohort_grant_rates(tables):
+    data = cohort_outcomes(tables)
+    fig, ax = plt.subplots(figsize=(10.5, 4.8), layout="constrained")
+    ax.plot(data["year"], data["initial_grant_rate"] * 100, color=MUTED, linewidth=2,
+            marker="o", markersize=3.5, label="At initial decision")
+    ax.plot(data["year"], data["latest_grant_rate"] * 100, color=TEAL, linewidth=2.3,
+            marker="o", markersize=3.5, label="Latest known substantive outcomes")
+    ax.set_xticks(data["year"], data["year"].astype(str), rotation=45, ha="right")
+    ax.set_ylim(0, 100)
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda value, _: f"{value:.0f}%"))
+    ax.set_ylabel("Estimated grant rate", color=MUTED)
+    ax.set_title("Estimated grant rate as claim cohorts mature", loc="left", color=INK, fontsize=15, pad=14)
+    style_axis(ax)
+    add_legend(fig, ax, ncol=2, fontsize=8.5)
+    save_chart(fig, "cohort-grant-rates")
+
+
+def chart_cohort_returns(tables):
+    data = cohort_outcomes(tables)
+    positions = list(range(len(data)))
+    fig, ax = plt.subplots(figsize=(10.8, 5), layout="constrained")
+    ax.bar(positions, data["enforced_returns"], color=TEAL, width=.72, label="Enforced returns")
+    ax.bar(positions, data["voluntary_returns"], bottom=data["enforced_returns"], color=GOLD,
+           width=.72, label="Voluntary returns")
+    maximum = int((data["enforced_returns"] + data["voluntary_returns"]).max())
+    format_count_axis(ax.yaxis, maximum)
+    ax.set_ylabel("Returns recorded for the claim cohort (cases)", color=MUTED)
+    ax.set_xticks(positions, data["year"].astype(str), rotation=45, ha="right")
+    ax.set_ylim(bottom=0)
+    rate_ax = ax.twinx()
+    rate_ax.plot(positions, data["returns_per_100_latest_refusals"], color=PURPLE,
+                 linewidth=2.1, marker="o", markersize=3.5,
+                 label="Returns per 100 latest refusals")
+    rate_ax.set_ylim(bottom=0)
+    rate_ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda value, _: f"{value:.0f}%"))
+    rate_ax.set_ylabel("Returns per 100 latest refusals", color=MUTED)
+    rate_ax.tick_params(axis="y", colors=MUTED, labelsize=9, length=0, pad=7)
+    rate_ax.spines[["top", "left", "bottom"]].set_visible(False)
+    rate_ax.spines["right"].set_color(GRID)
+    rate_ax.grid(False)
+    ax.set_title("Returns recorded for each claim-year cohort", loc="left", color=INK, fontsize=15, pad=14)
+    style_axis(ax)
+    add_legend(fig, ax, ncol=3, fontsize=8, additional_axes=(rate_ax,))
+    save_chart(fig, "cohort-returns")
+
+
 def chart_waiting_times(tables):
     table = tables["Asy_03a"]
     date_columns = [column for column in table["columns"] if column.startswith("Year ending June")]
@@ -1832,9 +2129,11 @@ def chart_stock_and_returns(quarterly, work_in_progress):
     save_chart(fig, "stock-vs-returns")
 
 
-def write_outputs(metadata, tables, quarterly, work_in_progress, support, queue_indicators):
+def write_outputs(metadata, tables, quarterly, work_in_progress, support, queue_indicators, unhcr_fvp_stages):
     DERIVED.mkdir(parents=True, exist_ok=True)
-    headlines = make_headlines(metadata, tables, quarterly, work_in_progress, support, queue_indicators)
+    headlines = make_headlines(
+        metadata, tables, quarterly, work_in_progress, support, queue_indicators, unhcr_fvp_stages
+    )
     (DERIVED / "tables.json").write_text(
         json.dumps({"source": metadata, "tables": tables}, indent=2, allow_nan=False) + "\n",
         encoding="utf-8",
@@ -1877,6 +2176,12 @@ def write_outputs(metadata, tables, quarterly, work_in_progress, support, queue_
     inadmissibility_series(tables).to_csv(
         DERIVED / "inadmissibility.csv", index=False, lineterminator="\n", na_rep=""
     )
+    inadmissibility_nationality_series(tables).to_csv(
+        DERIVED / "inadmissibility-nationality.csv", index=False, lineterminator="\n", na_rep=""
+    )
+    cohort_outcomes(tables).to_csv(
+        DERIVED / "cohort-outcomes.csv", index=False, lineterminator="\n", na_rep=""
+    )
     queue_indicators.to_csv(
         DERIVED / "queue-indicators.csv", index=False, lineterminator="\n", na_rep=""
     )
@@ -1893,6 +2198,10 @@ def write_outputs(metadata, tables, quarterly, work_in_progress, support, queue_
     chart_small_boat_rates(tables)
     chart_inadmissibility_quarterly(tables)
     chart_inadmissibility_totals(tables)
+    chart_inadmissibility_nationality(tables)
+    chart_cohort_latest_outcomes(tables)
+    chart_cohort_grant_rates(tables)
+    chart_cohort_returns(tables)
     chart_waiting_times(tables)
     chart_support(tables)
     chart_hotel_accommodation(support)
@@ -1916,8 +2225,10 @@ def main():
     validate_support_data(tables, support)
     queue_indicators = load_queue_indicators()
     validate_queue_indicators(queue_indicators, work_in_progress)
-    write_outputs(metadata, tables, quarterly, work_in_progress, support, queue_indicators)
-    print("Parsed 18 summary tables and pinned quarterly data; source fingerprints and reconciliations validated.")
+    unhcr_fvp_stages = load_unhcr_fvp_stages()
+    validate_unhcr_fvp_stages(unhcr_fvp_stages)
+    write_outputs(metadata, tables, quarterly, work_in_progress, support, queue_indicators, unhcr_fvp_stages)
+    print("Parsed 19 summary tables and pinned data; source fingerprints and reconciliations validated.")
 
 
 if __name__ == "__main__":

@@ -140,7 +140,23 @@ The second chart shows the difference in counts directly. In 2022 outcomes were 
 
 ![Annual decisions-minus-claims gaps and cumulative gap, calendar years 2010–2025.](assets/decisions-minus-claims.svg){fig-alt="Diverging bars show annual differences between recorded initial outcomes and claims received, while a line shows the cumulative difference since 2010. Negative bars indicate fewer outcomes than claims; positive bars indicate more."}
 
-These are people-based administrative flows, not linked claim cohorts, staff productivity or waiting-time measures. Administrative outcomes are recorded in the quarterly extract only from 2020, so earlier all-outcome totals have less complete coverage. Asylum Tracker’s separate **2025 UK FVP estimate of 116** uses UNHCR reporting data and a broader reporting basis; it is not directly comparable with this Home Office series. [Download the annual FVP series and flow gaps](data/derived/face-value-productivity.csv).
+These are people-based administrative flows, not linked claim cohorts, staff productivity or waiting-time measures. Administrative outcomes are recorded in the quarterly extract only from 2020, so earlier all-outcome totals have less complete coverage. [Download the annual FVP series and flow gaps](data/derived/face-value-productivity.csv).
+
+::: {.callout-note}
+### Why does Asylum Tracker show 116 for UK 2025?
+
+Both measures express recorded decisions per 100 applications, but the UNHCR figure combines three procedures. In 2025, first-instance (FI) data recorded 159,122 decisions for 100,620 applications; appeal/review (AR) recorded 26,016 decisions for 62,732 applications; and repeat (RA) recorded 9,739 decisions for 4,833 applications. The low AR ratio pulls the all-procedure result down to **115.9**, displayed as **116** in Asylum Tracker.
+
+| UNHCR procedure | Applications | Decisions | Unit | Decisions per 100 applications |
+|:--|--:|--:|:--|--:|
+| First instance (FI) | 100,620 | 159,122 | Persons | 158.1 |
+| Appeal/review (AR) | 62,732 | 26,016 | Cases | 41.5 |
+| Repeat (RA) | 4,833 | 9,739 | Persons | 201.5 |
+| All three procedures | 168,185 | 194,877 | Mixed | 115.9 |
+| Home Office initial outcomes | 101,911 claims | 160,730 outcomes | People | 157.7 |
+
+The closest comparison is first instance alone: **158.1 per 100 applications**, only 0.4 points above the Home Office’s calendar-2025 **157.7**. The UNHCR all-procedure total adds persons and cases without conversion, and includes appeal/review decisions and repeat claims; the Home Office measure covers initial outcomes against claims in the same year. They are therefore not like-for-like totals. The report’s **156.6** figure is for the separate rolling year ending June 2026, not calendar 2025. These UNHCR stage counts are pinned from Asylum Tracker’s [applications](https://github.com/aloysius109/asylum-tracker/blob/main/asylum-applications.csv) and [decisions](https://github.com/aloysius109/asylum-tracker/blob/main/asylum-decisions.csv) extracts. [Download the reviewed stage extract](data/raw/unhcr-gbr-fvp-stages.csv).
+:::
 
 ### FVP and grant rates
 
@@ -231,7 +247,11 @@ The second chart compares totals for the same period. It makes the small number 
 
 ![Published inadmissibility-related event totals, 2021 Q1 to 2026 Q2.](assets/inadmissibility-totals.svg){fig-alt="Horizontal bars compare published event totals: 108,455 identified, 51,228 notices of intent, 1,268 inadmissibility decisions served, 1,133 removals and 105,828 subsequently admitted."}
 
-The quarterly figures are management information; the latest seven quarters are provisional (Notes 30–35). The categories record administrative events, not a linked sequence for the same people, and should not be read as a conversion funnel. The table reports enforced removals, not voluntary returns. Decision-served and removal events rise sharply from 2025 Q4, but the table does not identify when those people were first considered. The removal series in this edition includes returns to France under the UK–France agreement, following the August 2026 release. [Download the quarterly series and cumulative totals](data/derived/inadmissibility.csv).
+The Home Office provides a nationality breakdown for **notices of intent only** in `Asy_02f`; nationality is not published for people identified, decisions served, removals or later admissions. From 2021 Q1 to 2026 Q2 it records **51,228 notice events**, led by Afghanistan (**12,416**), Syria (4,964), Eritrea (4,658), Iran (4,574) and Albania (3,841). These are event counts, not a count of distinct people, and they cannot show how many people of each nationality were later admitted or removed.
+
+![Notices of intent by nationality, 2021 Q1 to 2026 Q2.](assets/inadmissibility-nationality.svg){fig-alt="Horizontal bars show the 15 nationalities with the most notices of intent and an All other category; Afghanistan is highest. This is a notice-event breakdown, not a breakdown of later outcomes."}
+
+The quarterly figures are management information; the latest seven quarters are provisional (Notes 30–35). The categories record administrative events, not a linked sequence for the same people, and should not be read as a conversion funnel. The table reports enforced removals, not voluntary returns. Decision-served and removal events rise sharply from 2025 Q4, but the table does not identify when those people were first considered. The removal series in this edition includes returns to France under the UK–France agreement, following the August 2026 release. [Download the quarterly series and cumulative totals](data/derived/inadmissibility.csv) or [the nationality breakdown](data/derived/inadmissibility-nationality.csv).
 
 ## Backlog and waiting times
 
@@ -269,9 +289,19 @@ Tables `Asy_03b` and `Asy_03c` separate pre-Nationality and Borders Act (pre-NAB
 
 ## What happens to each year’s claims?
 
-Table `Asy_04` follows claim-year cohorts and reports decisions, grants, refusals, returns and the latest known outcome. A claim cohort is different from the annual flow of decisions: some claims are decided after the year in which they were made.
+Table `Asy_04` follows main-applicant claim cohorts, so its counts are not the same as annual flows of people claiming or receiving decisions. The first chart shows each cohort’s latest published outcomes as a share of claims. The “not yet known” segment is unresolved at the time of this release; withdrawals and administrative outcomes can also be followed by reinstatement.
 
-Recent cohorts are incomplete. In the 2025 cohort, 9,009 claims still had a latest outcome not yet known in this release. The table’s estimated grant rates are calculated for the cohort and should not be read as the final result for unresolved cases or as a prediction of later cohorts.
+![Latest published outcomes for each year’s claim cohort as shares of that cohort’s total claims, 2010–2025.](assets/cohort-latest-outcomes.svg){fig-alt="100 percent stacked bars show latest grants, refusals, withdrawals, administrative outcomes and outcomes not yet known for each claim-year cohort; unresolved outcomes are hatched."}
+
+The estimated grant rate changes as a cohort matures: for the 2010 cohort it rises from **27.2% at initial decision to 50.0% on the latest known substantive outcomes**; for 2022 it is **60.3% to 68.0%**. The 2025 cohort’s corresponding figures are **44.5% and 46.7%**, but **9,009 of its 82,559 claims** still had no latest outcome recorded. These rates are snapshots, not final results for unresolved cases or predictions for later cohorts; they use grants divided by grants plus refusals among the relevant recorded outcomes.
+
+![Initial and latest estimated grant rates by claim-year cohort, 2010–2025.](assets/cohort-grant-rates.svg){fig-alt="Two lines compare each cohort’s estimated grant rate at initial decision with its rate on latest known substantive outcomes; recent cohorts remain incomplete."}
+
+The returns chart shows the enforced and voluntary returns recorded against each claim-year cohort, with an event ratio of returns per 100 latest refusals for context. That ratio is not a person-level return rate: the source does not establish that each return relates to one of the recorded refusals in that cohort. It falls from **72.2 per 100 latest refusals for 2010** to **9.7 for 2025**; recent cohorts have had less time for outcomes and returns to be recorded.
+
+![Enforced and voluntary returns recorded for each claim-year cohort, with returns per 100 latest refusals, 2010–2025.](assets/cohort-returns.svg){fig-alt="Stacked bars show cohort returns split into enforced and voluntary returns; a line shows returns per 100 latest refusals on a separate scale. The ratio is not a linked-person return rate."}
+
+[Download the cohort outcomes and rates](data/derived/cohort-outcomes.csv).
 
 ## Children and age assessments
 
@@ -329,7 +359,7 @@ This edition uses the Home Office **asylum summary tables, year ending June 2026
 
 The analysis parses 18 summary tables directly and validates the quarterly flow extracts against `Asy_00a` for calendar years 2010–2025, the year ending June 2026 and the latest pending stock. D03 main-applicant pending counts reconcile to the `Asy_00a` case total in June 2026; the June 2024 D03 and ASY_03 figures are shown side by side but remain separate source measures. `Asy_02e` quarterly event values reconcile to its published totals; its admission/removal comparisons are not person-level outcomes. The `ASY_02` initial-decision waiting bands sum to the published total and match `ASY_03` awaiting counts at June snapshots from 2017 through 2024. MoJ `FIA_4` financial-year quarters are mapped to calendar quarters; its tribunal caseload is shown as a separate indicator, not added to Home Office WIP. Support and hotel counts are reconciled for year-end 2022–2025 and June 2026; regional hotel counts also sum to the national totals. ASY_03 stage counts reconcile to the total WIP count; June 2024 has only the awaiting and aggregate post-decision split, and “On Hold” is excluded from the lower-bound count of cases beyond an initial decision. The ASY_03 work-in-progress series ends in June 2024. Cells marked `z`, `:`, `-`, or similar source suppression or non-applicability markers remain missing; they are never converted into zero. Calendar years, rolling years and quarters remain distinct. The 2011 claim total in `Asy_00a` differs by six from `Asy_01a`; the tables retain the source figures and are not forcibly reconciled across tables.
 
-The FVP series divides grants, refusals, withdrawals and administrative outcomes by claims in the same period, and reports outcomes per 100 claims. Its three-year mean is centred on each calendar year; the June 2026 point is a separate rolling-year ratio. The cumulative outcomes-minus-claims line covers calendar years 2010–2025 and is not a backlog estimate.
+The FVP series divides grants, refusals, withdrawals and administrative outcomes by claims in the same period, and reports outcomes per 100 claims. Its three-year mean is centred on each calendar year; the June 2026 point is a separate rolling-year ratio. The UNHCR stage comparison uses FI, AR and RA counts from Asylum Tracker for calendar years 2021–2025; AR applications and decisions are cases, while FI and RA are persons. The 2025 aggregate is arithmetic across these mixed units and procedures, not one common population. The cohort analysis reads the repeated `Asy_04` outcome rows by their position and checks that initial decisions, latest outcomes and unknown cases reconcile to cohort claims. The cumulative outcomes-minus-claims line covers calendar years 2010–2025 and is not a backlog estimate.
 
 The FVP/grant-rate comparison uses Pearson correlations between annual FVP (people, all recorded initial outcomes) and the published main-applicant grant rate; the lagged comparison pairs year *t* FVP with year *t*+1 rate. It includes 16 same-year observations and 15 lagged pairs, with no causal or statistical-significance claim; sensitivity checks exclude 2022 and 2022–23 grant-rate years.
 
@@ -355,6 +385,9 @@ These files are derived from the pinned workbook above. The all-table CSV is a l
 - [Quarterly claims, decisions, returns and pending stock (CSV)](data/derived/quarterly-flows.csv)
 - [Annual face-value productivity ratios and decisions-minus-claims gaps (CSV)](data/derived/face-value-productivity.csv)
 - [Annual FVP and published grant-rate comparison (CSV)](data/derived/fvp-grant-rate.csv)
+- [Reviewed UK UNHCR FVP procedure counts (CSV)](data/raw/unhcr-gbr-fvp-stages.csv)
+- [Inadmissibility notices by nationality (CSV)](data/derived/inadmissibility-nationality.csv)
+- [Claim-cohort outcomes, rates and returns (CSV)](data/derived/cohort-outcomes.csv)
 - [ASY_03 work-in-progress snapshots (CSV)](data/raw/asylum-work-in-progress.csv)
 - [ASY_03 work-in-progress stages and calculated shares (CSV)](data/derived/work-in-progress-stages.csv)
 - [Quarterly initial-decision, tribunal and WIP queue indicators (CSV)](data/derived/queue-indicators.csv)
