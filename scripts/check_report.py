@@ -40,6 +40,7 @@ def main():
     children = headlines["children"]
     wip = headlines["work_in_progress"]
     awaiting_comparison = headlines["awaiting_comparison"]
+    inadmissibility = headlines["inadmissibility"]
 
     require(annual["people_claiming_asylum"] == 101911, "Calendar 2025 claims changed from the report headline.")
     require(round(annual["published_initial_grant_rate_main_applicants"] * 100, 1) == 42.1,
@@ -115,6 +116,19 @@ def main():
             and awaiting_comparison["june_2026"]["main_applicant_cases"] == 32401
             and awaiting_comparison["june_2026"]["dependants"] == 7767,
             "The same-date D03 and ASY_03 pending counts or June 2026 unit split changed.")
+    require(inadmissibility["period"] == "2021 Q1 to 2026 Q2"
+            and inadmissibility["identified"] == 108455
+            and inadmissibility["notices_of_intent"] == 51228
+            and inadmissibility["decisions_served"] == 1268
+            and inadmissibility["removals"] == 1133
+            and inadmissibility["subsequently_admitted"] == 105828
+            and round(inadmissibility["admitted_to_identified_event_ratio"] * 100, 1) == 97.6
+            and round(inadmissibility["removals_to_identified_event_ratio"] * 100, 1) == 1.0
+            and inadmissibility["latest_quarter"] == "2026 Q2"
+            and inadmissibility["latest_identified"] == 1979
+            and inadmissibility["latest_admitted"] == 981
+            and inadmissibility["latest_removals"] == 650,
+            "The published inadmissibility event totals, period or ratios changed.")
 
     claims = [
         "101,911", "42.1%", "38.1%", "40,168", "32,401", "85,891", "115,872",
@@ -149,6 +163,14 @@ def main():
         "32,401 main applicants and 7,767 dependants", "87,217 in ASY_03",
         "85,839 in D03 and 87,217 in ASY_03, a difference of 1,378 cases",
         "separately compiled publications", "the two publications are not interchangeable",
+        "108,455 identification events", "105,828 subsequent-admission events", "1,133 removals",
+        "97.6%", "1.0%", "not person-level rates", "does not link the people identified to later outcomes",
+        "should not be read as a conversion funnel", "latest seven quarters are provisional",
+        "enforced removals, not voluntary returns", "rise sharply from 2025 Q4",
+        "returns to France under the UK–France agreement",
+        "only the wait for an initial decision", "total time people spend in the asylum system is likely to be longer",
+        "137,525 main-applicant cases", "These WIP figures are cases, whereas `Asy_03a` durations count people",
+        "does not publish durations for post-decision cases",
         "2010 Q1 to 2026 Q2",
         "z", "2011 claim total in `Asy_00a` differs by six from `Asy_01a`",
     ]
@@ -165,6 +187,7 @@ def main():
         "data/derived/quarterly-flows.csv",
         "data/raw/asylum-work-in-progress.csv",
         "data/derived/work-in-progress-stages.csv",
+        "data/derived/inadmissibility.csv",
         "data/raw/support-accommodation-extract.csv",
         "data/derived/quarterly-support-accommodation.csv",
         "data/derived/hotel-by-region.csv",
@@ -176,7 +199,7 @@ def main():
     require(len(download) == 2, "Download section is missing.")
     content = download[1].split("\n## Related reports", 1)[0]
     links = re.findall(r"\[[^\]]+\]\(([^)]+)\)", content)
-    require(len(links) == 13, "Expected thirteen reader-facing data download links.")
+    require(len(links) == 14, "Expected fourteen reader-facing data download links.")
     for link in links:
         require((ROOT / link).is_file(), f"Download target does not exist: {link}")
 
@@ -187,11 +210,12 @@ def main():
         "waiting-times.svg", "asylum-support.svg", "quarterly-flows-returns.svg",
         "quarterly-claims-outcomes.svg", "stock-vs-returns.svg",
         "hotel-accommodation.svg", "hotel-by-region.svg", "work-in-progress-stages.svg",
+        "inadmissibility-quarterly.svg", "inadmissibility-totals.svg",
     ]:
         require((ROOT / "assets" / chart).is_file(), f"Expected report chart is missing: {chart}")
         require(f"assets/{chart}" in report, f"Report does not reference its chart: {chart}")
 
-    print("Report QA passed: pinned figures, unit distinctions, nineteen charts and thirteen downloads are consistent.")
+    print("Report QA passed: pinned figures, unit distinctions, twenty-one charts and fourteen downloads are consistent.")
 
 
 if __name__ == "__main__":

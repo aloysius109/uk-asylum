@@ -58,6 +58,7 @@ def test_all_chart_legends_are_outside_the_plot_area(monkeypatch):
         analyze.chart_uasc_grant_rate(tables)
         analyze.chart_age_assessments(tables)
         analyze.chart_small_boat_rates(tables)
+        analyze.chart_inadmissibility_quarterly(tables)
         analyze.chart_waiting_times(tables)
         analyze.chart_hotel_accommodation(support)
         analyze.chart_hotel_regions(support)
@@ -69,7 +70,7 @@ def test_all_chart_legends_are_outside_the_plot_area(monkeypatch):
         assert {name for name, _ in rendered} == {
             "claims-by-nationality", "claims-by-age", "claims-by-route", "nationality-routes",
             "grant-types", "children-decisions", "uasc-grant-rate", "age-assessments",
-            "annual-claims-decisions", "small-boat-grant-rates", "waiting-times",
+            "annual-claims-decisions", "small-boat-grant-rates", "inadmissibility-quarterly", "waiting-times",
             "hotel-accommodation", "hotel-by-region", "quarterly-flows-returns",
             "quarterly-claims-outcomes", "work-in-progress-stages", "stock-vs-returns",
         }
@@ -79,10 +80,12 @@ def test_all_chart_legends_are_outside_the_plot_area(monkeypatch):
             assert fig.axes[0].get_legend() is None, name
             legend = fig.legends[0]
             renderer = fig.canvas.get_renderer()
-            assert not legend.get_window_extent(renderer).overlaps(
-                fig.axes[0].get_window_extent(renderer)
-            ), name
-            decorations_bottom = fig.axes[0].get_tightbbox(renderer).y0
+            for axis in fig.axes:
+                assert axis.get_legend() is None, name
+                assert not legend.get_window_extent(renderer).overlaps(
+                    axis.get_window_extent(renderer)
+                ), name
+            decorations_bottom = min(axis.get_tightbbox(renderer).y0 for axis in fig.axes)
             legend_top = max(
                 artist.get_window_extent(renderer).y1
                 for artist in [*legend.get_texts(), *legend.legend_handles]
@@ -92,6 +95,33 @@ def test_all_chart_legends_are_outside_the_plot_area(monkeypatch):
     finally:
         for _, fig in rendered:
             analyze.plt.close(fig)
+
+
+def test_inadmissibility_series_reconcile_and_report_event_ratios():
+    _, tables = load_tables()
+    validate_tables(tables)
+    series = analyze.inadmissibility_series(tables)
+
+    assert analyze.quarter_end_dates(["2021 Q1", "2021 Q2", "2021 Q3", "2021 Q4", "2026 Q2"]).tolist() == [
+        pd.Timestamp("2021-03-31"), pd.Timestamp("2021-06-30"), pd.Timestamp("2021-09-30"),
+        pd.Timestamp("2021-12-31"), pd.Timestamp("2026-06-30"),
+    ]
+    assert len(series) == 22
+    assert pd.api.types.is_integer_dtype(series["identified"])
+    assert series.iloc[0]["quarter"] == "2021 Q1"
+    assert series.iloc[-1]["quarter"] == "2026 Q2"
+    assert series.iloc[-1]["cumulative_identified"] == 108455
+    assert series.iloc[-1]["cumulative_notices_of_intent"] == 51228
+    assert series.iloc[-1]["cumulative_decisions_served"] == 1268
+    assert series.iloc[-1]["cumulative_removals"] == 1133
+    assert series.iloc[-1]["cumulative_subsequently_admitted"] == 105828
+    assert series.iloc[-1]["identified"] == 1979
+    assert series.iloc[-1]["subsequently_admitted"] == 981
+    assert series.iloc[-1]["removals"] == 650
+    assert round(series.iloc[-1]["cumulative_subsequently_admitted"]
+                 / series.iloc[-1]["cumulative_identified"] * 100, 1) == 97.6
+    assert round(series.iloc[-1]["cumulative_removals"]
+                 / series.iloc[-1]["cumulative_identified"] * 100, 1) == 1.0
 
 
 def test_who_claims_age_groups_and_routes_use_the_correct_rows():

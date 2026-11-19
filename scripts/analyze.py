@@ -31,6 +31,13 @@ WIP_STAGE_COLUMNS = [
     "Awaiting Initial Asylum Decision", "Post Decision", "Asylum Appeal Outstanding",
     "Subject to Removal Action", "On Hold", "Further Leave Application Outstanding",
 ]
+INADMISSIBILITY_ROWS = {
+    "identified": "Total identified for consideration on inadmissibility grounds",
+    "notices_of_intent": "Notice of intent issued",
+    "decisions_served": "Inadmissibility decision served",
+    "removals": "Removals",
+    "subsequently_admitted": "Subsequently admitted into UK asylum process",
+}
 
 SHEETS = {
     "Asy_00a": "Date / As at the end of...",
@@ -186,6 +193,13 @@ def numeric(value, context):
     if not isinstance(value, (int, float)) or isinstance(value, bool):
         raise ValueError(f"Expected a numeric value for {context}; found {value!r}.")
     return float(value)
+
+
+def inadmissibility_count(table, label, column):
+    value = numeric(value_for(table, label, column), f"{label} in {column}")
+    if value < 0 or not value.is_integer():
+        raise ValueError(f"Expected a non-negative whole-number count for {label} in {column}; found {value!r}.")
+    return int(value)
 
 
 def load_quarterly_data():
@@ -540,6 +554,21 @@ def validate_tables(tables):
         if closed != age_results:
             raise ValueError(f"Asy_05 age-assessment results do not reconcile in {column}.")
 
+    inadmissibility = tables["Asy_02e"]
+    inadmissibility_quarters = [
+        f"{year} Q{quarter}"
+        for year in range(2021, 2027)
+        for quarter in range(1, (3 if year == 2026 else 5))
+    ]
+    if [column for column in inadmissibility["columns"] if re.fullmatch(r"20\d{2} Q[1-4]", column)] != inadmissibility_quarters:
+        raise ValueError("Asy_02e must include quarterly observations from 2021 Q1 through 2026 Q2.")
+    for label in INADMISSIBILITY_ROWS.values():
+        row_total = sum(
+            inadmissibility_count(inadmissibility, label, quarter) for quarter in inadmissibility_quarters
+        )
+        if row_total != inadmissibility_count(inadmissibility, label, "Total"):
+            raise ValueError(f"Asy_02e quarterly values do not reconcile for {label}.")
+
     small_boat_rates = tables["Asy_02d"]
     for label in ("Grant rate - year ending June 2025 (cases)", "Grant rate - year ending June 2026 (cases)"):
         total = numeric(value_for(small_boat_rates, "All nationalities", label), label)
@@ -594,6 +623,25 @@ def latest_summary(tables):
     return {key: optional_value(flows, label, column) for key, label in labels.items()}
 
 
+def inadmissibility_series(tables):
+    table = tables["Asy_02e"]
+    quarters = [column for column in table["columns"] if re.fullmatch(r"20\d{2} Q[1-4]", column)]
+    records = [
+        {
+            "quarter": quarter,
+            **{
+                key: inadmissibility_count(table, label, quarter)
+                for key, label in INADMISSIBILITY_ROWS.items()
+            },
+        }
+        for quarter in quarters
+    ]
+    result = pd.DataFrame(records)
+    for key in INADMISSIBILITY_ROWS:
+        result[f"cumulative_{key}"] = result[key].cumsum()
+    return result
+
+
 def make_headlines(metadata, tables, quarterly, work_in_progress, support):
     small_boat = tables["Asy_02d"]
     nationality_table = tables["Asy_01b"]
@@ -614,6 +662,9 @@ def make_headlines(metadata, tables, quarterly, work_in_progress, support):
     june_2024_pending = quarterly.loc[quarterly["quarter"] == "2024 Q2"].iloc[0]
     june_2024_wip = work_in_progress.loc[work_in_progress["Quarter"] == "2024 Q2"].iloc[0]
     june_2026_pending = quarterly.loc[quarterly["quarter"] == "2026 Q2"].iloc[0]
+    inadmissibility = inadmissibility_series(tables)
+    inadmissibility_totals = inadmissibility.iloc[-1]
+    inadmissibility_identified = int(inadmissibility_totals["cumulative_identified"])
     accommodations = support_series(support)
     hotel_series = accommodations.dropna(subset=["hotel"])
     peak_hotel = hotel_series.loc[hotel_series["hotel"].idxmax()]
@@ -720,6 +771,24 @@ def make_headlines(metadata, tables, quarterly, work_in_progress, support):
                 ),
             },
         },
+        "inadmissibility": {
+            "period": "2021 Q1 to 2026 Q2",
+            "identified": inadmissibility_identified,
+            "notices_of_intent": int(inadmissibility_totals["cumulative_notices_of_intent"]),
+            "decisions_served": int(inadmissibility_totals["cumulative_decisions_served"]),
+            "removals": int(inadmissibility_totals["cumulative_removals"]),
+            "subsequently_admitted": int(inadmissibility_totals["cumulative_subsequently_admitted"]),
+            "admitted_to_identified_event_ratio": (
+                int(inadmissibility_totals["cumulative_subsequently_admitted"]) / inadmissibility_identified
+            ),
+            "removals_to_identified_event_ratio": (
+                int(inadmissibility_totals["cumulative_removals"]) / inadmissibility_identified
+            ),
+            "latest_quarter": inadmissibility.iloc[-1]["quarter"],
+            "latest_identified": int(inadmissibility.iloc[-1]["identified"]),
+            "latest_admitted": int(inadmissibility.iloc[-1]["subsequently_admitted"]),
+            "latest_removals": int(inadmissibility.iloc[-1]["removals"]),
+        },
         "hotel_accommodation": {
             "peak_quarter": peak_hotel["quarter"],
             "peak_people": int(peak_hotel["hotel"]),
@@ -765,8 +834,12 @@ def save_chart(fig, name):
 LEGEND_BORDER_PAD = 1.8
 
 
-def add_legend(fig, ax, ncol, fontsize=9):
+def add_legend(fig, ax, ncol, fontsize=9, additional_axes=()):
     handles, labels = ax.get_legend_handles_labels()
+    for additional_ax in additional_axes:
+        extra_handles, extra_labels = additional_ax.get_legend_handles_labels()
+        handles.extend(extra_handles)
+        labels.extend(extra_labels)
     fig.legend(
         handles, labels, loc="outside lower center", ncol=ncol,
         frameon=False, fontsize=fontsize, borderpad=LEGEND_BORDER_PAD,
@@ -1063,6 +1136,87 @@ def chart_small_boat_rates(tables):
     save_chart(fig, "small-boat-grant-rates")
 
 
+def chart_inadmissibility_quarterly(tables):
+    data = inadmissibility_series(tables)
+    dates = quarter_end_dates(data["quarter"])
+    fig, ax = plt.subplots(figsize=(11, 5), layout="constrained")
+    ax.plot(dates, data["identified"], color=TEAL, linewidth=2.3, marker="o", markersize=3,
+            label="Identified for consideration")
+    ax.plot(dates, data["notices_of_intent"], color=GOLD, linewidth=2.1, marker="o", markersize=3,
+            label="Notice of intent issued")
+    ax.plot(dates, data["subsequently_admitted"], color=PURPLE, linewidth=2.3, marker="o", markersize=3,
+            label="Subsequently admitted to asylum process")
+
+    event_ax = ax.twinx()
+    event_ax.patch.set_visible(False)
+    event_ax.bar(dates - pd.Timedelta(days=11), data["decisions_served"], width=17,
+                 color="#b9c9bf", label="Inadmissibility decision served")
+    event_ax.bar(dates + pd.Timedelta(days=11), data["removals"], width=17,
+                 color="#8d7770", label="Removals")
+    event_max = max(data["decisions_served"].max(), data["removals"].max())
+    event_ax.set_ylim(0, event_max * 1.15)
+    format_count_axis(event_ax.yaxis, event_max)
+    event_ax.set_ylabel("Decisions served or removals", color=MUTED)
+    event_ax.tick_params(axis="y", colors=MUTED, labelsize=9, length=0, pad=7)
+    event_ax.spines[["top", "left", "bottom"]].set_visible(False)
+    event_ax.spines["right"].set_color(GRID)
+    event_ax.grid(False)
+
+    ax.set_ylim(bottom=0)
+    ax.set_ylabel("People identified, notified or subsequently admitted", color=MUTED)
+    format_count_axis(ax.yaxis, max(data["identified"].max(), data["notices_of_intent"].max(),
+                                    data["subsequently_admitted"].max()))
+    ax.set_title("Inadmissibility-related events by quarter", loc="left", color=INK, fontsize=15, pad=14)
+    style_quarter_axis(ax, "2021-01-01", "2026-06-30")
+    years = list(range(2021, 2027))
+    ax.set_xticks([pd.Timestamp(year=year, month=1, day=1) for year in years], [str(year) for year in years])
+    ax.set_xlabel("Quarter", color=MUTED)
+    add_legend(fig, ax, ncol=3, fontsize=8.5, additional_axes=(event_ax,))
+    save_chart(fig, "inadmissibility-quarterly")
+
+
+def quarter_end_dates(quarters):
+    quarters = pd.Series(quarters)
+    quarter_number = quarters.str[-1].astype(int)
+    return pd.to_datetime({
+        "year": quarters.str[:4].astype(int),
+        "month": quarter_number * 3,
+        "day": 1,
+    }) + pd.offsets.MonthEnd(0)
+
+
+def chart_inadmissibility_totals(tables):
+    data = inadmissibility_series(tables)
+    rows = [
+        ("Identified for consideration", "cumulative_identified", MUTED),
+        ("Notice of intent issued", "cumulative_notices_of_intent", GOLD),
+        ("Inadmissibility decision served", "cumulative_decisions_served", "#b9c9bf"),
+        ("Removals", "cumulative_removals", "#8d7770"),
+        ("Subsequently admitted to asylum process", "cumulative_subsequently_admitted", TEAL),
+    ]
+    labels = [label for label, _, _ in rows]
+    values = [int(data.iloc[-1][column]) for _, column, _ in rows]
+    colors = [color for _, _, color in rows]
+    positions = list(range(len(rows)))
+    maximum = max(values)
+    fig, ax = plt.subplots(figsize=(10.5, 4.5), layout="constrained")
+    ax.barh(positions, values, color=colors, height=.62)
+    for position, value in zip(positions, values):
+        ax.text(value + maximum * .012, position, f"{value:,}", va="center", ha="left", fontsize=9, color=INK)
+    ax.set_yticks(positions, labels)
+    ax.invert_yaxis()
+    ax.set_xlim(0, maximum * 1.17)
+    ax.set_xlabel("Published events, 2021 Q1 to 2026 Q2", color=MUTED)
+    format_count_axis(ax.xaxis, maximum)
+    ax.set_title("Inadmissibility-related event totals", loc="left", color=INK, fontsize=15, pad=14)
+    ax.xaxis.grid(True, color=GRID, linewidth=.8)
+    ax.yaxis.grid(False)
+    ax.spines[["top", "right", "left", "bottom"]].set_visible(False)
+    ax.tick_params(axis="both", colors=MUTED, labelsize=9, length=0, pad=7)
+    ax.set_axisbelow(True)
+    save_chart(fig, "inadmissibility-totals")
+
+
 def chart_waiting_times(tables):
     table = tables["Asy_03a"]
     date_columns = [column for column in table["columns"] if column.startswith("Year ending June")]
@@ -1082,7 +1236,7 @@ def chart_waiting_times(tables):
     ax.set_yticks([])
     ax.set_xlabel("People awaiting an initial decision", color=MUTED)
     format_count_axis(ax.xaxis, sum(values))
-    ax.set_title(f"Waiting time at {latest_column}", loc="left", color=INK, fontsize=15, pad=14)
+    ax.set_title(f"Initial-decision waiting time at {latest_column}", loc="left", color=INK, fontsize=15, pad=14)
     ax.xaxis.grid(True, color=GRID, linewidth=.8)
     ax.yaxis.grid(False)
     ax.spines[["top", "right", "left", "bottom"]].set_visible(False)
@@ -1346,6 +1500,9 @@ def write_outputs(metadata, tables, quarterly, work_in_progress, support):
     work_in_progress_stages(work_in_progress).to_csv(
         DERIVED / "work-in-progress-stages.csv", index=False, lineterminator="\n", na_rep=""
     )
+    inadmissibility_series(tables).to_csv(
+        DERIVED / "inadmissibility.csv", index=False, lineterminator="\n", na_rep=""
+    )
     chart_claims_by_nationality(tables)
     chart_claims_by_age(tables)
     chart_claims_by_route(tables)
@@ -1357,6 +1514,8 @@ def write_outputs(metadata, tables, quarterly, work_in_progress, support):
     chart_annual_flows(tables)
     chart_grant_rates(tables)
     chart_small_boat_rates(tables)
+    chart_inadmissibility_quarterly(tables)
+    chart_inadmissibility_totals(tables)
     chart_waiting_times(tables)
     chart_support(tables)
     chart_hotel_accommodation(support)

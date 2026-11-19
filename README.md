@@ -1,6 +1,6 @@
 # UK asylum, in detail
 
-A reproducible UK report built from the Home Office asylum summary tables, year ending June 2026. It covers claims, age and nationality, route before claiming, decisions, small boats, inadmissibility, waiting times and backlog, cohorts, children, support and accommodation, and returns. Charts cover nationality, prior route, decisions and outcomes, children, UASC grant rates, age assessments and the wider work-in-progress queue. `UASC` means Unaccompanied Asylum-Seeking Child.
+A reproducible UK report built from the Home Office asylum summary tables, year ending June 2026. It covers claims, age and nationality, route before claiming, decisions, small boats, inadmissibility, waiting times and backlog, cohorts, children, support and accommodation, and returns. Charts cover nationality, prior route, decisions and outcomes, inadmissibility events, children, UASC grant rates, age assessments and the wider work-in-progress queue. `UASC` means Unaccompanied Asylum-Seeking Child.
 
 The report is intentionally separate from [Asylum Tracker](https://github.com/aloysius109/asylum-tracker), which combines global UNHCR analysis with a shorter UK comparison. This project focuses on the wider Home Office summary tables.
 
@@ -13,6 +13,8 @@ The source workbook is vendored at `data/raw/asylum-summary-jun-2026.ods`. `data
 This edition uses the tables listed in `scripts/analyze.py`, plus quarterly extracts from the Home Office claims, pending, returns, migration-transparency and asylum-support workbooks. The support extract comes from `Data_Asy_D09` in the asylum seekers in receipt of support dataset and includes quarterly accommodation counts by support type and UK region/nation. `data/raw/quarterly-sources.json` records the workbook URLs and hashes and pins the committed CSV extracts. The workbooks are cached under the ignored `data/raw/cache/` directory; rendering and CI use only the committed CSVs and do not download data.
 
 The ASY_03 work-in-progress queue counts main-applicant cases, not people. Its latest published total is 224,742 cases at June 2024; the report compares its 87,217 cases awaiting an initial decision with D03's 85,839 main-applicant cases at the same date and explains why the two publications are not interchangeable.
+
+The inadmissibility charts show the Home Office's quarterly events and totals from 2021 Q1 to 2026 Q2. Subsequent admissions and removals are not linked to the people identified in the same table, so their totals are not person-level outcome rates.
 
 The analysis keeps calendar-year, rolling-year and quarterly periods separate, preserves missing or suppressed values as missing, and retains the source’s case/person distinctions. The main initial grant rate is for main applicants: grants of protection or other leave divided by substantive initial decisions (grants plus refusals), excluding withdrawals and administrative outcomes. The small-boat nationality rates are case-based. The 2011 claim totals in `Asy_00a` and `Asy_01a` differ by six and are not artificially reconciled.
 

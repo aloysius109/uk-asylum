@@ -97,6 +97,20 @@
       "dependants": 7767
     }
   },
+  "inadmissibility": {
+    "period": "2021 Q1 to 2026 Q2",
+    "identified": 108455,
+    "notices_of_intent": 51228,
+    "decisions_served": 1268,
+    "removals": 1133,
+    "subsequently_admitted": 105828,
+    "admitted_to_identified_event_ratio": 0.9757779724309622,
+    "removals_to_identified_event_ratio": 0.01044672905813471,
+    "latest_quarter": "2026 Q2",
+    "latest_identified": 1979,
+    "latest_admitted": 981,
+    "latest_removals": 650
+  },
   "hotel_accommodation": {
     "peak_quarter": "2023 Q3",
     "peak_people": 56018,
