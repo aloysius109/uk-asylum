@@ -5,10 +5,12 @@ from pathlib import Path
 from analyze import (
     ROOT,
     load_quarterly_data,
+    load_queue_indicators,
     load_support_data,
     load_tables,
     make_headlines,
     validate_quarterly_data,
+    validate_queue_indicators,
     validate_support_data,
     validate_tables,
     work_in_progress_stages,
@@ -29,7 +31,9 @@ def main():
     validate_quarterly_data(tables, quarterly, work_in_progress)
     support = load_support_data()
     validate_support_data(tables, support)
-    headlines = make_headlines(metadata, tables, quarterly, work_in_progress, support)
+    queue_indicators = load_queue_indicators()
+    validate_queue_indicators(queue_indicators, work_in_progress)
+    headlines = make_headlines(metadata, tables, quarterly, work_in_progress, support, queue_indicators)
     annual = headlines["calendar_2025"]
     latest = headlines["year_ending_june_2026"]
     returns_and_stock = headlines["returns_and_stock"]
@@ -41,6 +45,7 @@ def main():
     wip = headlines["work_in_progress"]
     awaiting_comparison = headlines["awaiting_comparison"]
     inadmissibility = headlines["inadmissibility"]
+    wip_now = headlines["wip_now"]
 
     require(annual["people_claiming_asylum"] == 101911, "Calendar 2025 claims changed from the report headline.")
     require(round(annual["published_initial_grant_rate_main_applicants"] * 100, 1) == 42.1,
@@ -116,6 +121,20 @@ def main():
             and awaiting_comparison["june_2026"]["main_applicant_cases"] == 32401
             and awaiting_comparison["june_2026"]["dependants"] == 7767,
             "The same-date D03 and ASY_03 pending counts or June 2026 unit split changed.")
+    require(wip_now["latest_full_wip_quarter"] == "2024 Q2"
+            and wip_now["latest_full_wip_cases"] == 224742
+            and wip_now["latest_full_wip_post_decision_cases"] == 137525
+            and wip_now["initial_decision_cases_june_2024"] == 87217
+            and wip_now["initial_decision_cases_june_2026"] == 33514
+            and wip_now["initial_decision_cases_reduction"] == 53703
+            and round(wip_now["initial_decision_cases_reduction_share"] * 100, 1) == 61.6
+            and wip_now["latest_pending_people"] == 40168
+            and wip_now["latest_pending_main_applicant_cases"] == 32401
+            and wip_now["tribunal_asylum_protection_cases_june_2024"] == 33227
+            and wip_now["tribunal_asylum_protection_cases_june_2026"] == 90341
+            and wip_now["tribunal_asylum_protection_cases_increase"] == 57114
+            and wip_now["tribunal_total_open_cases_june_2026"] == 155798,
+            "The current WIP indicators or the comparison to June 2024 changed.")
     require(inadmissibility["period"] == "2021 Q1 to 2026 Q2"
             and inadmissibility["identified"] == 108455
             and inadmissibility["notices_of_intent"] == 51228
@@ -171,6 +190,14 @@ def main():
         "only the wait for an initial decision", "total time people spend in the asylum system is likely to be longer",
         "137,525 main-applicant cases", "These WIP figures are cases, whereas `Asy_03a` durations count people",
         "does not publish durations for post-decision cases",
+        "The current total WIP is not published", "137,525 “Post Decision” cases",
+        "should not all be described as waiting for appeals or reviews", "does not break them down further",
+        "Note 25 cautions that this aggregate is inflated by cases for which a decision had already been served",
+        "87,217 applications in June 2024", "33,514 in June 2026", "61.6% decrease",
+        "90,341 open cases in its Asylum/Protection and Revocation of Protection caseload",
+        "33,227 in June 2024", "cannot be added to estimate WIP",
+        "published data do not establish which", "32,401 main-applicant cases",
+        "FIA_4", "different coverage and are not additive", "2016 Q4 to 2026 Q2",
         "2010 Q1 to 2026 Q2",
         "z", "2011 claim total in `Asy_00a` differs by six from `Asy_01a`",
     ]
@@ -187,6 +214,7 @@ def main():
         "data/derived/quarterly-flows.csv",
         "data/raw/asylum-work-in-progress.csv",
         "data/derived/work-in-progress-stages.csv",
+        "data/derived/queue-indicators.csv",
         "data/derived/inadmissibility.csv",
         "data/raw/support-accommodation-extract.csv",
         "data/derived/quarterly-support-accommodation.csv",
@@ -199,7 +227,7 @@ def main():
     require(len(download) == 2, "Download section is missing.")
     content = download[1].split("\n## Related reports", 1)[0]
     links = re.findall(r"\[[^\]]+\]\(([^)]+)\)", content)
-    require(len(links) == 14, "Expected fourteen reader-facing data download links.")
+    require(len(links) == 15, "Expected fifteen reader-facing data download links.")
     for link in links:
         require((ROOT / link).is_file(), f"Download target does not exist: {link}")
 
@@ -210,12 +238,12 @@ def main():
         "waiting-times.svg", "asylum-support.svg", "quarterly-flows-returns.svg",
         "quarterly-claims-outcomes.svg", "stock-vs-returns.svg",
         "hotel-accommodation.svg", "hotel-by-region.svg", "work-in-progress-stages.svg",
-        "inadmissibility-quarterly.svg", "inadmissibility-totals.svg",
+        "inadmissibility-quarterly.svg", "inadmissibility-totals.svg", "queue-shift.svg",
     ]:
         require((ROOT / "assets" / chart).is_file(), f"Expected report chart is missing: {chart}")
         require(f"assets/{chart}" in report, f"Report does not reference its chart: {chart}")
 
-    print("Report QA passed: pinned figures, unit distinctions, twenty-one charts and fourteen downloads are consistent.")
+    print("Report QA passed: pinned figures, unit distinctions, twenty-two charts and fifteen downloads are consistent.")
 
 
 if __name__ == "__main__":

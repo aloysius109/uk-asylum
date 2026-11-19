@@ -1,4 +1,4 @@
-"""Prepare pinned quarterly asylum flows, return and work-in-progress data."""
+"""Prepare pinned quarterly asylum flows, return, work-in-progress and queue data."""
 import argparse
 import hashlib
 import json
@@ -20,9 +20,11 @@ CACHE = ROOT / "data" / "raw" / "cache"
 QUARTERLY_PATH = ROOT / "data" / "raw" / "quarterly-extract.csv"
 WORK_IN_PROGRESS_PATH = ROOT / "data" / "raw" / "asylum-work-in-progress.csv"
 SUPPORT_PATH = ROOT / "data" / "raw" / "support-accommodation-extract.csv"
+QUEUE_INDICATORS_PATH = ROOT / "data" / "raw" / "queue-indicators.csv"
 MANIFEST_PATH = ROOT / "data" / "raw" / "quarterly-sources.json"
 SOURCE_PAGE = "https://www.gov.uk/government/statistical-data-sets/immigration-system-statistics-data-tables"
 TRANSPARENCY_PAGE = "https://www.gov.uk/government/statistical-data-sets/migration-transparency-data"
+TRIBUNAL_PAGE = "https://www.gov.uk/government/statistics/tribunals-statistics-quarterly-april-to-june-2026"
 SOURCES = {
     "claims_decisions": {
         "url": (
@@ -58,6 +60,13 @@ SOURCES = {
             "asylum-seekers-receipt-support-datasets-jun-2026.xlsx"
         ),
         "filename": "asylum-seekers-receipt-support-datasets-jun-2026.xlsx",
+    },
+    "tribunals": {
+        "url": (
+            "https://assets.publishing.service.gov.uk/media/6aa18eb1c5796a7a179c658d/"
+            "Tribunals_Statistics_Quarterly_Main_Tables_Q1_2026_27.ods"
+        ),
+        "filename": "Tribunals_Statistics_Quarterly_Main_Tables_Q1_2026_27.ods",
     },
 }
 QUARTERLY_COLUMNS = [
@@ -274,6 +283,100 @@ def parse_work_in_progress(path):
     return work_in_progress
 
 
+def parse_initial_decision_wip(path):
+    raw = pd.read_excel(path, sheet_name="ASY_02", header=None, engine="openpyxl")
+    header_index = next(
+        (index for index, row in raw.iterrows() if str(row.iloc[0]).strip() == "Quarter"), None
+    )
+    if header_index is None:
+        raise ValueError("Could not find the ASY_02 quarter header in the transparency workbook.")
+    columns = [str(value).strip() if pd.notna(value) else "" for value in raw.iloc[header_index]]
+    required = ["Quarter", "Total", "Less than 3 months", "3-6 months", "6-12 months", "12 months+"]
+    if not set(required).issubset(columns):
+        raise ValueError("The ASY_02 workbook table is missing its total or waiting-time bands.")
+    positions = {name: columns.index(name) for name in required}
+    output_names = {
+        "Total": "initial_decision_cases",
+        "Less than 3 months": "waiting_less_than_3_months",
+        "3-6 months": "waiting_3_to_6_months",
+        "6-12 months": "waiting_6_to_12_months",
+        "12 months+": "waiting_12_months_or_more",
+    }
+    rows = []
+    for _, row in raw.iloc[header_index + 1:].iterrows():
+        quarter = str(row.iloc[positions["Quarter"]]).strip()
+        if not re.fullmatch(r"20\d{2} Q[1-4]", quarter):
+            continue
+        record = {"quarter": quarter, "period_end": quarter_end(quarter)}
+        record.update({
+            output_names[name]: count_value(row.iloc[positions[name]])
+            for name in output_names
+        })
+        rows.append(record)
+    if not rows:
+        raise ValueError("ASY_02 contains no dated initial-decision WIP observations.")
+    return pd.DataFrame(rows)
+
+
+def parse_tribunal_caseload(path):
+    raw = pd.read_excel(path, sheet_name="FIA_4", header=None, engine="odf")
+    header_index = next(
+        (index for index, row in raw.iterrows()
+         if "Financial Year" in row.astype(str).str.strip().tolist()
+         and "Quarter" in row.astype(str).str.strip().tolist()),
+        None,
+    )
+    if header_index is None:
+        raise ValueError("Could not find the FIA_4 financial-year and quarter header.")
+    columns = [str(value).strip() if pd.notna(value) else "" for value in raw.iloc[header_index]]
+    required = {"Financial Year", "Quarter", "Total"}
+    if not required.issubset(columns):
+        raise ValueError("FIA_4 is missing its financial year, quarter or total columns.")
+    asylum_column = next(
+        (column for column in columns if column.startswith("Asylum/Protection/Revocation of Protection")), None
+    )
+    if asylum_column is None:
+        raise ValueError("FIA_4 is missing the Asylum/Protection/Revocation of Protection column.")
+    positions = {name: columns.index(name) for name in required | {asylum_column}}
+    rows = []
+    financial_year = None
+    for _, row in raw.iloc[header_index + 1:].iterrows():
+        candidate = str(row.iloc[positions["Financial Year"]]).strip()
+        if re.fullmatch(r"20\d{2}/\d{2}", candidate):
+            financial_year = candidate
+        quarter_label = str(row.iloc[positions["Quarter"]]).strip()
+        if financial_year is None or not re.fullmatch(r"Q[1-4]", quarter_label):
+            continue
+        financial_quarter = int(quarter_label[1])
+        calendar_year = int(financial_year[:4]) + (financial_quarter == 4)
+        calendar_quarter = financial_quarter % 4 + 1
+        quarter = f"{calendar_year} Q{calendar_quarter}"
+        rows.append({
+            "quarter": quarter,
+            "period_end": quarter_end(quarter),
+            "tribunal_total_open_cases": count_value(row.iloc[positions["Total"]]),
+            "tribunal_asylum_protection_open_cases": count_value(row.iloc[positions[asylum_column]]),
+        })
+    result = pd.DataFrame(rows)
+    if result.empty or result["quarter"].duplicated().any():
+        raise ValueError("FIA_4 contains no quarterly observations or duplicate calendar quarters.")
+    return result.sort_values("quarter").reset_index(drop=True)
+
+
+def parse_queue_indicators(transparency_path, tribunal_path):
+    initial_decision = parse_initial_decision_wip(transparency_path)
+    tribunal = parse_tribunal_caseload(tribunal_path)
+    result = initial_decision.merge(
+        tribunal, on=["quarter", "period_end"], how="left", validate="one_to_one"
+    )
+    tribunal_columns = ["tribunal_total_open_cases", "tribunal_asylum_protection_open_cases"]
+    if result[tribunal_columns].isna().any().any():
+        raise ValueError("FIA_4 is missing one or more caseload values for quarters covered by ASY_02.")
+    if result["tribunal_asylum_protection_open_cases"].gt(result["tribunal_total_open_cases"]).any():
+        raise ValueError("The FIA_4 asylum/protection caseload cannot exceed the total open caseload.")
+    return result
+
+
 def require_equal(actual, expected, message):
     if actual != expected:
         raise ValueError(f"{message}: extracted {actual:,}; Asy_00a reports {expected:,}.")
@@ -314,7 +417,7 @@ def validate_support_against_summary(support, tables):
     )
 
 
-def validate_against_summary(quarterly, work_in_progress, support, tables):
+def validate_against_summary(quarterly, work_in_progress, support, queue_indicators, tables):
     flows = tables["Asy_00a"]
     measures = {
         "claims": "People claiming asylum",
@@ -377,10 +480,47 @@ def validate_against_summary(quarterly, work_in_progress, support, tables):
     wip = work_in_progress.loc[work_in_progress["Quarter"] == "2024 Q2", "Total Work In Progress"]
     if wip.empty or int(wip.iloc[0]) != 224742:
         raise ValueError("ASY_03 no longer reports 224,742 work-in-progress cases in June 2024.")
+    expected_queue_quarters = [f"{year} Q{quarter}" for year in range(2016, 2027)
+                               for quarter in range(1, 5)
+                               if (year > 2016 or quarter >= 4) and (year < 2026 or quarter <= 2)]
+    if queue_indicators["quarter"].tolist() != expected_queue_quarters:
+        raise ValueError("Queue indicators must cover 2016 Q4 through 2026 Q2 without gaps.")
+    waiting_bands = [
+        "waiting_less_than_3_months", "waiting_3_to_6_months",
+        "waiting_6_to_12_months", "waiting_12_months_or_more",
+    ]
+    if queue_indicators[waiting_bands].isna().any().any():
+        raise ValueError("ASY_02 is missing a waiting-time band in the queue-indicator extract.")
+    if queue_indicators[waiting_bands].sum(axis=1).ne(queue_indicators["initial_decision_cases"]).any():
+        raise ValueError("ASY_02 waiting-time bands do not reconcile to the initial-decision total.")
+    work_in_progress_by_quarter = work_in_progress.set_index("Quarter")
+    for year in range(2017, 2025):
+        quarter = f"{year} Q2"
+        observed = queue_indicators.loc[queue_indicators["quarter"] == quarter, "initial_decision_cases"]
+        expected = work_in_progress_by_quarter.loc[quarter, "Awaiting Initial Asylum Decision"]
+        if observed.empty or pd.isna(expected):
+            raise ValueError(f"ASY_02 or ASY_03 is missing the June {year} initial-decision count.")
+        require_equal(int(observed.iloc[0]), int(expected), f"ASY_02 and ASY_03 differ in June {year}")
+    fixed_values = {
+        ("2024 Q2", "initial_decision_cases"): 87217,
+        ("2026 Q2", "initial_decision_cases"): 33514,
+        ("2024 Q2", "tribunal_asylum_protection_open_cases"): 33227,
+        ("2026 Q2", "tribunal_asylum_protection_open_cases"): 90341,
+    }
+    for (quarter, column), expected in fixed_values.items():
+        observed = queue_indicators.loc[queue_indicators["quarter"] == quarter, column]
+        if observed.empty:
+            raise ValueError(f"The queue-indicator extract is missing {quarter} {column}.")
+        require_equal(int(observed.iloc[0]), expected, f"The published {quarter} {column} changed")
+    if queue_indicators["tribunal_asylum_protection_open_cases"].gt(
+        queue_indicators["tribunal_total_open_cases"]
+    ).any():
+        raise ValueError("FIA_4 asylum/protection caseloads exceed the total caseload.")
     validate_support_against_summary(support, tables)
 
 
-def manifest_sources(old_manifest, workbook_hashes, quarterly_hash, wip_hash, support_hash, update_extract_pins):
+def manifest_sources(old_manifest, workbook_hashes, quarterly_hash, wip_hash, support_hash, queue_hash,
+                     update_extract_pins):
     old_workbooks = old_manifest.get("workbooks", {})
     for name, digest in workbook_hashes.items():
         expected = old_workbooks.get(name, {}).get("sha256")
@@ -389,16 +529,23 @@ def manifest_sources(old_manifest, workbook_hashes, quarterly_hash, wip_hash, su
     expected_quarterly = old_manifest.get("quarterly_extract", {}).get("sha256")
     expected_wip = old_manifest.get("work_in_progress_extract", {}).get("sha256")
     expected_support = old_manifest.get("support_extract", {}).get("sha256")
+    expected_queue = old_manifest.get("queue_indicators_extract", {}).get("sha256")
     if expected_quarterly and quarterly_hash != expected_quarterly and not update_extract_pins:
         raise ValueError("The quarterly extract changed; review it before updating the source manifest.")
     if expected_wip and wip_hash != expected_wip and not update_extract_pins:
         raise ValueError("The work-in-progress extract changed; review it before updating the source manifest.")
     if expected_support and support_hash != expected_support and not update_extract_pins:
         raise ValueError("The support extract changed; review it before updating the source manifest.")
+    if expected_queue and queue_hash != expected_queue and not update_extract_pins:
+        raise ValueError("The queue-indicator extract changed; review it before updating the source manifest.")
 
     return {
         "release": "Year ending June 2026",
-        "source_pages": {"asylum_and_returns": SOURCE_PAGE, "transparency": TRANSPARENCY_PAGE},
+        "source_pages": {
+            "asylum_and_returns": SOURCE_PAGE,
+            "transparency": TRANSPARENCY_PAGE,
+            "tribunals": TRIBUNAL_PAGE,
+        },
         "retrieved": old_manifest.get("retrieved") or datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "workbooks": {
             name: {
@@ -411,6 +558,7 @@ def manifest_sources(old_manifest, workbook_hashes, quarterly_hash, wip_hash, su
         "quarterly_extract": {"file": "quarterly-extract.csv", "sha256": quarterly_hash},
         "work_in_progress_extract": {"file": "asylum-work-in-progress.csv", "sha256": wip_hash},
         "support_extract": {"file": "support-accommodation-extract.csv", "sha256": support_hash},
+        "queue_indicators_extract": {"file": "queue-indicators.csv", "sha256": queue_hash},
     }
 
 
@@ -427,24 +575,30 @@ def prepare(update_extract_pins=False):
     quarterly = parse_quarterly_sources(paths)
     work_in_progress = parse_work_in_progress(paths["transparency"])
     support = parse_support_sources(paths["support"])
+    queue_indicators = parse_queue_indicators(paths["transparency"], paths["tribunals"])
     _, tables = load_tables()
-    validate_against_summary(quarterly, work_in_progress, support, tables)
+    validate_against_summary(quarterly, work_in_progress, support, queue_indicators, tables)
 
     quarterly_bytes = quarterly.to_csv(index=False, lineterminator="\n", na_rep="").encode("utf-8")
     wip_bytes = work_in_progress.to_csv(index=False, lineterminator="\n", na_rep="").encode("utf-8")
     support_bytes = support.to_csv(index=False, lineterminator="\n", na_rep="").encode("utf-8")
+    queue_bytes = queue_indicators.to_csv(index=False, lineterminator="\n", na_rep="").encode("utf-8")
     quarterly_hash = hashlib.sha256(quarterly_bytes).hexdigest()
     wip_hash = hashlib.sha256(wip_bytes).hexdigest()
     support_hash = hashlib.sha256(support_bytes).hexdigest()
-    manifest = manifest_sources(old_manifest, hashes, quarterly_hash, wip_hash, support_hash, update_extract_pins)
+    queue_hash = hashlib.sha256(queue_bytes).hexdigest()
+    manifest = manifest_sources(
+        old_manifest, hashes, quarterly_hash, wip_hash, support_hash, queue_hash, update_extract_pins
+    )
 
     QUARTERLY_PATH.write_bytes(quarterly_bytes)
     WORK_IN_PROGRESS_PATH.write_bytes(wip_bytes)
     SUPPORT_PATH.write_bytes(support_bytes)
+    QUEUE_INDICATORS_PATH.write_bytes(queue_bytes)
     MANIFEST_PATH.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     print(
-        "Prepared quarterly flows, 14 ASY_03 snapshots and quarterly support/accommodation data; "
-        "flow and support totals reconcile to Asy_00a."
+        "Prepared quarterly flows, 14 ASY_03 snapshots, support/accommodation and queue indicators; "
+        "flows and source reconciliations validated."
     )
 
 

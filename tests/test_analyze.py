@@ -15,12 +15,14 @@ from analyze import (
     hotel_region_breakdown,
     header_text,
     load_quarterly_data,
+    load_queue_indicators,
     load_support_data,
     load_tables,
     parse_table,
     quarterly_flows_with_rolling_returns,
     support_series,
     validate_quarterly_data,
+    validate_queue_indicators,
     validate_support_data,
     validate_tables,
     value_for,
@@ -43,6 +45,8 @@ def test_count_axis_labels_use_separators_or_k_when_the_scale_warrants_it():
 def test_all_chart_legends_are_outside_the_plot_area(monkeypatch):
     _, tables = load_tables()
     quarterly, work_in_progress = load_quarterly_data()
+    queue_indicators = load_queue_indicators()
+    validate_queue_indicators(queue_indicators, work_in_progress)
     support = load_support_data()
     rendered = []
     monkeypatch.setattr(analyze, "save_chart", lambda fig, name: rendered.append((name, fig)))
@@ -65,6 +69,7 @@ def test_all_chart_legends_are_outside_the_plot_area(monkeypatch):
         analyze.chart_quarterly_flows(quarterly)
         analyze.chart_quarterly_decision_outcomes(quarterly)
         analyze.chart_work_in_progress_stages(work_in_progress)
+        analyze.chart_queue_shift(queue_indicators, work_in_progress)
         analyze.chart_stock_and_returns(quarterly, work_in_progress)
 
         assert {name for name, _ in rendered} == {
@@ -72,7 +77,7 @@ def test_all_chart_legends_are_outside_the_plot_area(monkeypatch):
             "grant-types", "children-decisions", "uasc-grant-rate", "age-assessments",
             "annual-claims-decisions", "small-boat-grant-rates", "inadmissibility-quarterly", "waiting-times",
             "hotel-accommodation", "hotel-by-region", "quarterly-flows-returns",
-            "quarterly-claims-outcomes", "work-in-progress-stages", "stock-vs-returns",
+            "quarterly-claims-outcomes", "work-in-progress-stages", "queue-shift", "stock-vs-returns",
         }
         for name, fig in rendered:
             fig.canvas.draw()
@@ -239,6 +244,26 @@ def test_work_in_progress_stages_show_latest_split_and_earlier_bounds():
     assert earlier["not_awaiting"] == 77384
     assert earlier["decided_excluding_on_hold"] == 63097
     assert earlier["On Hold"] == 14287
+
+
+def test_queue_indicators_reconcile_and_show_the_current_wip_limits():
+    _, work_in_progress = load_quarterly_data()
+    queue = load_queue_indicators()
+    validate_queue_indicators(queue, work_in_progress)
+    june_2024 = queue.loc[queue["quarter"] == "2024 Q2"].iloc[0]
+    june_2026 = queue.loc[queue["quarter"] == "2026 Q2"].iloc[0]
+
+    assert len(queue) == 39
+    assert june_2024["period_end"] == "2024-06-30"
+    assert june_2026["period_end"] == "2026-06-30"
+    assert june_2024["initial_decision_cases"] == 87217
+    assert june_2026["initial_decision_cases"] == 33514
+    decline = june_2024["initial_decision_cases"] - june_2026["initial_decision_cases"]
+    assert decline == 53703
+    assert round(decline / june_2024["initial_decision_cases"] * 100, 1) == 61.6
+    assert june_2024["tribunal_asylum_protection_open_cases"] == 33227
+    assert june_2026["tribunal_asylum_protection_open_cases"] == 90341
+    assert june_2026["tribunal_total_open_cases"] == 155798
 
 
 def test_work_in_progress_parser_discards_values_under_blank_headers(monkeypatch):

@@ -2,7 +2,8 @@
   "release": "Year ending June 2026",
   "source_pages": {
     "asylum_and_returns": "https://www.gov.uk/government/statistical-data-sets/immigration-system-statistics-data-tables",
-    "transparency": "https://www.gov.uk/government/statistical-data-sets/migration-transparency-data"
+    "transparency": "https://www.gov.uk/government/statistical-data-sets/migration-transparency-data",
+    "tribunals": "https://www.gov.uk/government/statistics/tribunals-statistics-quarterly-april-to-june-2026"
   },
   "retrieved": "2026-11-18T16:33:57+00:00",
   "workbooks": {
@@ -30,6 +31,11 @@
       "url": "https://assets.publishing.service.gov.uk/media/6a85c2f1c9205b515d421eec/asylum-seekers-receipt-support-datasets-jun-2026.xlsx",
       "filename": "asylum-seekers-receipt-support-datasets-jun-2026.xlsx",
       "sha256": "72f915e4ae27e78b8d077a3fffc96b45a151343b1c8f8ee9d98750b2fd78a8c4"
+    },
+    "tribunals": {
+      "url": "https://assets.publishing.service.gov.uk/media/6aa18eb1c5796a7a179c658d/Tribunals_Statistics_Quarterly_Main_Tables_Q1_2026_27.ods",
+      "filename": "Tribunals_Statistics_Quarterly_Main_Tables_Q1_2026_27.ods",
+      "sha256": "39ee826338ad1b7b7f633103d00894bdef8f8d36fa2e0741b1c8fbb5b368a763"
     }
   },
   "quarterly_extract": {
@@ -43,5 +49,9 @@
   "support_extract": {
     "file": "support-accommodation-extract.csv",
     "sha256": "17ea0192b56a0dc8cb2acccd6a7679b2018031bb7a7e44bd21c55a1a355d1969"
+  },
+  "queue_indicators_extract": {
+    "file": "queue-indicators.csv",
+    "sha256": "b311fd627c35019870a63bdeeb6925ef782cdb9b14e4f471bd384ddf9b4f2bc5"
   }
 }

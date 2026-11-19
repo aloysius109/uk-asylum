@@ -56,6 +56,16 @@ The Home Office recorded **101,911 people claiming asylum in calendar year 2025*
 ::::
 ::::
 
+:::: {.callout-note}
+### What has happened to the WIP queue since June 2024?
+
+**The current total WIP is not published.** The Home Office’s latest full count remains **224,742 main-applicant cases in June 2024**; table `ASY_03` is suspended after that date. Its **137,525 “Post Decision” cases** had moved beyond an initial decision, but the June 2024 table does not break them down further. They should not all be described as waiting for appeals or reviews, and “Post Decision” does not mean the cases were resolved. The Home Office’s Note 25 cautions that this aggregate is inflated by cases for which a decision had already been served.
+
+The initial-decision queue did fall by more than half: Home Office table `ASY_02` reports **87,217 applications in June 2024** and **33,514 in June 2026**, a **61.6% decrease** in that series. The separate `D03` count for June 2026 is **40,168 people**, including **32,401 main-applicant cases** and dependants; the tables are separately compiled, so use the same series for a trend rather than treating these figures as interchangeable.
+
+Meanwhile, the Ministry of Justice recorded **90,341 open cases in its Asylum/Protection and Revocation of Protection caseload in June 2026**, up from **33,227 in June 2024**. That increase is larger than the fall in the initial-decision queue, but the figures are not linked case by case and cannot be added to estimate WIP. They show substantial work further along the process; **the current total WIP could be higher or lower than June 2024, and the published data do not establish which**. [See the caseload comparison below](#backlog-and-waiting-times).
+::::
+
 ## The overall picture
 
 Calendar-year flows and rolling years answer different questions. The 2025 calendar-year series is shown through 2025; the year ending June 2026 is reported separately, not treated as a calendar 2026 value. In that latest rolling year, 85,891 people claimed asylum and 115,872 received an initial decision. Those decisions comprised 42,394 grants of protection or other leave and 73,478 refusals.
@@ -158,6 +168,12 @@ The wider WIP snapshot shows why that distinction matters. In June 2024, **137,5
 
 The wider work-in-progress (WIP) queue was **224,742 main-applicant cases** in June 2024, the latest published snapshot. The table classifies **87,217 (38.8%)** as awaiting an initial decision and **137,525 (61.2%)** as “Post Decision”. That is a useful indication of how many cases had moved beyond the initial-decision stage, not a count of cases whose asylum process was complete. The Home Office has suspended this WIP series after June 2024 (Note 26), so this is not a current 2026 total.
 
+The chart compares three published indicators: quarterly applications awaiting an initial decision (`ASY_02`), the tribunal’s open asylum/protection and revocation caseload (`FIA_4`), and the broader ASY_03 WIP totals available only for June snapshots through 2024. They have different coverage and are not additive; the tribunal series is not linked to the Home Office cases.
+
+![Published initial-decision applications, tribunal asylum/protection and revocation caseload, and total WIP snapshots, 2016 Q4 to 2026 Q2.](assets/queue-shift.svg){fig-alt="Three separate indicators: Home Office applications awaiting an initial decision fell to 33,514 by June 2026; tribunal asylum/protection and revocation caseload rose to 90,341; the broader total WIP is shown only at June snapshots through 2024, ending at 224,742. The measures have different coverage and cannot be added."}
+
+The Home Office’s `ASY_02` count is **33,514 applications** in June 2026, compared with **87,217** in June 2024. This is a 61.6% fall within that series. The separate `D03` release reports **32,401 main-applicant cases** at June 2026; the small difference between publications is another reason to keep their series distinct. [Download the quarterly queue indicators](data/derived/queue-indicators.csv).
+
 The two headline counts with similar wording are from different dates and use different units. The pending-decision table (`Data_Asy_D03`) counts people, including dependants; ASY_03 reports main-applicant cases in the wider WIP queue.
 
 | Source and measure | Unit | June 2024 | June 2026 |
@@ -234,9 +250,9 @@ The lines use a common count scale to show their different magnitudes, but their
 
 ## Data, definitions and reproducibility
 
-This edition uses the Home Office **asylum summary tables, year ending June 2026**, published on 27 August 2026, alongside reviewed quarterly extracts from the asylum claims, pending, returns, migration-transparency and asylum-support workbooks. The summary ODS fingerprint is recorded in `data/raw/source.json`; the quarterly workbook and extract hashes are recorded in `data/raw/quarterly-sources.json`. The analysis refuses to run if the ODS or any committed quarterly extract differs from its pinned hash. Rendering the report does not download or silently replace source data.
+This edition uses the Home Office **asylum summary tables, year ending June 2026**, published on 27 August 2026, alongside reviewed quarterly extracts from the asylum claims, pending, returns, migration-transparency and asylum-support workbooks and the Ministry of Justice’s [**Tribunal Statistics Quarterly, April to June 2026**](https://www.gov.uk/government/statistics/tribunals-statistics-quarterly-april-to-june-2026) main tables. The summary ODS fingerprint is recorded in `data/raw/source.json`; quarterly workbook and extract hashes are recorded in `data/raw/quarterly-sources.json`. The analysis refuses to run if the ODS or any committed quarterly extract differs from its pinned hash. Rendering the report does not download or silently replace source data.
 
-The analysis parses 18 summary tables directly and validates the quarterly flow extracts against `Asy_00a` for calendar years 2010–2025, the year ending June 2026 and the latest pending stock. D03 main-applicant pending counts reconcile to the `Asy_00a` case total in June 2026; the June 2024 D03 and ASY_03 figures are shown side by side but remain separate source measures. `Asy_02e` quarterly event values reconcile to its published totals; its admission/removal comparisons are not person-level outcomes. Support and hotel counts are reconciled for year-end 2022–2025 and June 2026; regional hotel counts also sum to the national totals. ASY_03 stage counts reconcile to the total WIP count; June 2024 has only the awaiting and aggregate post-decision split, and “On Hold” is excluded from the lower-bound count of cases beyond an initial decision. The ASY_03 work-in-progress series ends in June 2024. Cells marked `z`, `:`, `-`, or similar source suppression or non-applicability markers remain missing; they are never converted into zero. Calendar years, rolling years and quarters remain distinct. The 2011 claim total in `Asy_00a` differs by six from `Asy_01a`; the tables retain the source figures and are not forcibly reconciled across tables.
+The analysis parses 18 summary tables directly and validates the quarterly flow extracts against `Asy_00a` for calendar years 2010–2025, the year ending June 2026 and the latest pending stock. D03 main-applicant pending counts reconcile to the `Asy_00a` case total in June 2026; the June 2024 D03 and ASY_03 figures are shown side by side but remain separate source measures. `Asy_02e` quarterly event values reconcile to its published totals; its admission/removal comparisons are not person-level outcomes. The `ASY_02` initial-decision waiting bands sum to the published total and match `ASY_03` awaiting counts at June snapshots from 2017 through 2024. MoJ `FIA_4` financial-year quarters are mapped to calendar quarters; its tribunal caseload is shown as a separate indicator, not added to Home Office WIP. Support and hotel counts are reconciled for year-end 2022–2025 and June 2026; regional hotel counts also sum to the national totals. ASY_03 stage counts reconcile to the total WIP count; June 2024 has only the awaiting and aggregate post-decision split, and “On Hold” is excluded from the lower-bound count of cases beyond an initial decision. The ASY_03 work-in-progress series ends in June 2024. Cells marked `z`, `:`, `-`, or similar source suppression or non-applicability markers remain missing; they are never converted into zero. Calendar years, rolling years and quarters remain distinct. The 2011 claim total in `Asy_00a` differs by six from `Asy_01a`; the tables retain the source figures and are not forcibly reconciled across tables.
 
 Count axes use comma-separated values below 10,000 and `K` abbreviations at or above that scale; this convention is implemented in `COUNT_AXIS_K_THRESHOLD` in `scripts/analyze.py`. Chart legends sit below the plot area rather than over the data, with clear space beneath the axis labels.
 
@@ -260,6 +276,7 @@ These files are derived from the pinned workbook above. The all-table CSV is a l
 - [Quarterly claims, decisions, returns and pending stock (CSV)](data/derived/quarterly-flows.csv)
 - [ASY_03 work-in-progress snapshots (CSV)](data/raw/asylum-work-in-progress.csv)
 - [ASY_03 work-in-progress stages and calculated shares (CSV)](data/derived/work-in-progress-stages.csv)
+- [Quarterly initial-decision, tribunal and WIP queue indicators (CSV)](data/derived/queue-indicators.csv)
 - [Quarterly inadmissibility events and cumulative totals (CSV)](data/derived/inadmissibility.csv)
 - [Quarterly support and accommodation series (CSV)](data/derived/quarterly-support-accommodation.csv)
 - [Hotel accommodation by region or nation (CSV)](data/derived/hotel-by-region.csv)

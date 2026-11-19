@@ -82,6 +82,21 @@
     "not_awaiting_initial_decision_cases": 137525,
     "not_awaiting_initial_decision_share": 0.611923894955104
   },
+  "wip_now": {
+    "latest_full_wip_quarter": "2024 Q2",
+    "latest_full_wip_cases": 224742,
+    "latest_full_wip_post_decision_cases": 137525,
+    "initial_decision_cases_june_2024": 87217,
+    "initial_decision_cases_june_2026": 33514,
+    "initial_decision_cases_reduction": 53703,
+    "initial_decision_cases_reduction_share": 0.6157400506781935,
+    "latest_pending_people": 40168,
+    "latest_pending_main_applicant_cases": 32401,
+    "tribunal_asylum_protection_cases_june_2024": 33227,
+    "tribunal_asylum_protection_cases_june_2026": 90341,
+    "tribunal_asylum_protection_cases_increase": 57114,
+    "tribunal_total_open_cases_june_2026": 155798
+  },
   "awaiting_comparison": {
     "june_2024": {
       "people": 118882,

@@ -1,6 +1,6 @@
 # UK asylum, in detail
 
-A reproducible UK report built from the Home Office asylum summary tables, year ending June 2026. It covers claims, age and nationality, route before claiming, decisions, small boats, inadmissibility, waiting times and backlog, cohorts, children, support and accommodation, and returns. Charts cover nationality, prior route, decisions and outcomes, inadmissibility events, children, UASC grant rates, age assessments and the wider work-in-progress queue. `UASC` means Unaccompanied Asylum-Seeking Child.
+A reproducible UK report built from the Home Office asylum summary tables, year ending June 2026. It covers claims, age and nationality, route before claiming, decisions, small boats, inadmissibility, waiting times and backlog, cohorts, children, support and accommodation, and returns. Charts cover nationality, prior route, decisions and outcomes, inadmissibility events, children, UASC grant rates, age assessments, WIP stages and the initial-decision/tribunal caseload comparison. `UASC` means Unaccompanied Asylum-Seeking Child.
 
 The report is intentionally separate from [Asylum Tracker](https://github.com/aloysius109/asylum-tracker), which combines global UNHCR analysis with a shorter UK comparison. This project focuses on the wider Home Office summary tables.
 
@@ -10,15 +10,17 @@ Published report: <https://aloysius109.github.io/uk-asylum/>.
 
 The source workbook is vendored at `data/raw/asylum-summary-jun-2026.ods`. `data/raw/source.json` records its Home Office URL, retrieval time and SHA-256. The analysis verifies that fingerprint and never downloads or replaces the accepted workbook during rendering.
 
-This edition uses the tables listed in `scripts/analyze.py`, plus quarterly extracts from the Home Office claims, pending, returns, migration-transparency and asylum-support workbooks. The support extract comes from `Data_Asy_D09` in the asylum seekers in receipt of support dataset and includes quarterly accommodation counts by support type and UK region/nation. `data/raw/quarterly-sources.json` records the workbook URLs and hashes and pins the committed CSV extracts. The workbooks are cached under the ignored `data/raw/cache/` directory; rendering and CI use only the committed CSVs and do not download data.
+This edition uses the tables listed in `scripts/analyze.py`, plus quarterly extracts from the Home Office claims, pending, returns, migration-transparency and asylum-support workbooks and the Ministry of Justice’s [Tribunal Statistics Quarterly](https://www.gov.uk/government/statistics/tribunals-statistics-quarterly-april-to-june-2026) main tables. The support extract comes from `Data_Asy_D09` in the asylum seekers in receipt of support dataset and includes quarterly accommodation counts by support type and UK region/nation. The queue extract combines the Home Office `ASY_02` and Ministry of Justice `FIA_4` series. `data/raw/quarterly-sources.json` records the workbook URLs and hashes and pins the committed CSV extracts. The workbooks are cached under the ignored `data/raw/cache/` directory; rendering and CI use only the committed CSVs and do not download data.
 
 The ASY_03 work-in-progress queue counts main-applicant cases, not people. Its latest published total is 224,742 cases at June 2024; the report compares its 87,217 cases awaiting an initial decision with D03's 85,839 main-applicant cases at the same date and explains why the two publications are not interchangeable.
+
+ASY_03 is suspended after June 2024, so the current total WIP is not published. Within the separate `ASY_02` initial-decision series, applications awaiting an initial decision fell from 87,217 in June 2024 to 33,514 in June 2026 (61.6%). Meanwhile, MoJ `FIA_4` open cases in the asylum/protection and revocation caseload rose from 33,227 to 90,341; this is a downstream caseload indicator, not a component that can be added to WIP. These sources do not establish whether the total WIP is now larger or smaller than it was in June 2024.
 
 The inadmissibility charts show the Home Office's quarterly events and totals from 2021 Q1 to 2026 Q2. Subsequent admissions and removals are not linked to the people identified in the same table, so their totals are not person-level outcome rates.
 
 The analysis keeps calendar-year, rolling-year and quarterly periods separate, preserves missing or suppressed values as missing, and retains the source’s case/person distinctions. The main initial grant rate is for main applicants: grants of protection or other leave divided by substantive initial decisions (grants plus refusals), excluding withdrawals and administrative outcomes. The small-boat nationality rates are case-based. The 2011 claim totals in `Asy_00a` and `Asy_01a` differ by six and are not artificially reconciled.
 
-The workbook’s appeals series ends in March 2023 and is not included as a report chapter. Prior-route data are Official Statistics in Development. The Home Office says the `Asy_03b` and `Asy_03c` tables will be discontinued after this release.
+The Home Office summary workbook’s own appeals tables (`Asy_06_07`) end in March 2023 and are not included as a report chapter; the separate MoJ `FIA_4` open caseload is used only as a downstream indicator. Prior-route data are Official Statistics in Development. The Home Office says the `Asy_03b` and `Asy_03c` tables will be discontinued after this release.
 
 ## Chart conventions
 
@@ -41,7 +43,7 @@ python -m pytest tests
 quarto render
 ```
 
-`prepare_quarterly.py` downloads the five pinned workbooks only when they are not in the local cache, checks their hashes and verifies the extracts against `Asy_00a`. The analysis writes charts to `assets/`, parsed source tables and downloadable CSVs to `data/derived/`, and a dated headline record. Quarto writes the static site to `_site/`.
+`prepare_quarterly.py` downloads the six pinned workbooks only when they are not in the local cache, checks their hashes and verifies the extracts against `Asy_00a` and published queue totals. The analysis writes charts to `assets/`, parsed source tables and downloadable CSVs to `data/derived/`, and a dated headline record. Quarto writes the static site to `_site/`.
 
 ## Source watch and adopting a new release
 

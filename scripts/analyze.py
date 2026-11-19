@@ -27,6 +27,11 @@ QUARTERLY_COLUMNS = [
 SUPPORT_COLUMNS = [
     "quarter", "period_end", "support_type", "accommodation_type", "uk_region", "people",
 ]
+QUEUE_INDICATOR_COLUMNS = [
+    "quarter", "period_end", "initial_decision_cases", "waiting_less_than_3_months",
+    "waiting_3_to_6_months", "waiting_6_to_12_months", "waiting_12_months_or_more",
+    "tribunal_total_open_cases", "tribunal_asylum_protection_open_cases",
+]
 WIP_STAGE_COLUMNS = [
     "Awaiting Initial Asylum Decision", "Post Decision", "Asylum Appeal Outstanding",
     "Subject to Removal Action", "On Hold", "Further Leave Application Outstanding",
@@ -242,6 +247,22 @@ def load_support_data():
     return support
 
 
+def load_queue_indicators():
+    manifest = json.loads(QUARTERLY_MANIFEST.read_text(encoding="utf-8"))
+    entry = manifest.get("queue_indicators_extract", {})
+    path = ROOT / "data" / "raw" / entry.get("file", "")
+    if not path.is_file():
+        raise ValueError(f"Pinned queue-indicator data file is missing: {path}.")
+    actual_hash = hashlib.sha256(path.read_bytes()).hexdigest()
+    if actual_hash != entry.get("sha256"):
+        raise ValueError(f"Queue-indicator data SHA-256 differs from quarterly-sources.json: {path.name}.")
+
+    queue = pd.read_csv(path, dtype={"quarter": str, "period_end": str})
+    if list(queue.columns) != QUEUE_INDICATOR_COLUMNS:
+        raise ValueError("The queue-indicator extract has unexpected or missing columns.")
+    return queue
+
+
 def validate_quarterly_data(tables, quarterly, work_in_progress):
     expected_quarters = [f"{year} Q{quarter}" for year in range(2010, 2027)
                          for quarter in range(1, 5) if year < 2026 or quarter <= 2]
@@ -326,6 +347,45 @@ def validate_quarterly_data(tables, quarterly, work_in_progress):
     if (int(latest_wip_stages["Awaiting Initial Asylum Decision"]) != 87217
             or int(latest_wip_stages["Post Decision"]) != 137525):
         raise ValueError("ASY_03 June 2024 initial-decision stages changed from the published split.")
+
+
+def validate_queue_indicators(queue_indicators, work_in_progress):
+    expected_quarters = [f"{year} Q{quarter}" for year in range(2016, 2027)
+                         for quarter in range(1, 5)
+                         if (year > 2016 or quarter >= 4) and (year < 2026 or quarter <= 2)]
+    if queue_indicators["quarter"].tolist() != expected_quarters:
+        raise ValueError("Queue indicators must cover 2016 Q4 through 2026 Q2 without gaps.")
+    if queue_indicators["quarter"].duplicated().any():
+        raise ValueError("The queue-indicator extract contains duplicate quarters.")
+    count_columns = QUEUE_INDICATOR_COLUMNS[2:]
+    if queue_indicators[count_columns].isna().any().any() or (queue_indicators[count_columns] < 0).any().any():
+        raise ValueError("Queue indicators must contain non-negative counts in every published quarter.")
+    waiting_bands = [
+        "waiting_less_than_3_months", "waiting_3_to_6_months",
+        "waiting_6_to_12_months", "waiting_12_months_or_more",
+    ]
+    if queue_indicators[waiting_bands].sum(axis=1).ne(queue_indicators["initial_decision_cases"]).any():
+        raise ValueError("ASY_02 waiting-time bands do not reconcile to the initial-decision total.")
+
+    queue = queue_indicators.set_index("quarter")
+    wip = work_in_progress.set_index("Quarter")
+    for year in range(2017, 2025):
+        quarter = f"{year} Q2"
+        if queue.loc[quarter, "initial_decision_cases"] != wip.loc[
+            quarter, "Awaiting Initial Asylum Decision"
+        ]:
+            raise ValueError(f"ASY_02 and ASY_03 initial-decision cases do not reconcile in June {year}.")
+
+    expected = {
+        ("2024 Q2", "initial_decision_cases"): 87217,
+        ("2026 Q2", "initial_decision_cases"): 33514,
+        ("2024 Q2", "tribunal_asylum_protection_open_cases"): 33227,
+        ("2026 Q2", "tribunal_asylum_protection_open_cases"): 90341,
+        ("2026 Q2", "tribunal_total_open_cases"): 155798,
+    }
+    for (quarter, column), value in expected.items():
+        if int(queue.loc[quarter, column]) != value:
+            raise ValueError(f"The published {quarter} {column} value changed from {value:,}.")
 
 
 def work_in_progress_stages(work_in_progress):
@@ -642,7 +702,7 @@ def inadmissibility_series(tables):
     return result
 
 
-def make_headlines(metadata, tables, quarterly, work_in_progress, support):
+def make_headlines(metadata, tables, quarterly, work_in_progress, support, queue_indicators):
     small_boat = tables["Asy_02d"]
     nationality_table = tables["Asy_01b"]
     nationality_latest = "Year ending June 2026"
@@ -662,6 +722,9 @@ def make_headlines(metadata, tables, quarterly, work_in_progress, support):
     june_2024_pending = quarterly.loc[quarterly["quarter"] == "2024 Q2"].iloc[0]
     june_2024_wip = work_in_progress.loc[work_in_progress["Quarter"] == "2024 Q2"].iloc[0]
     june_2026_pending = quarterly.loc[quarterly["quarter"] == "2026 Q2"].iloc[0]
+    queue = queue_indicators.set_index("quarter")
+    june_2024_queue = queue.loc["2024 Q2"]
+    june_2026_queue = queue.loc["2026 Q2"]
     inadmissibility = inadmissibility_series(tables)
     inadmissibility_totals = inadmissibility.iloc[-1]
     inadmissibility_identified = int(inadmissibility_totals["cumulative_identified"])
@@ -744,6 +807,35 @@ def make_headlines(metadata, tables, quarterly, work_in_progress, support):
             ),
             "not_awaiting_initial_decision_cases": int(latest_wip_stages["not_awaiting"]),
             "not_awaiting_initial_decision_share": float(latest_wip_stages["not_awaiting_share"]),
+        },
+        "wip_now": {
+            "latest_full_wip_quarter": latest_work_in_progress["Quarter"],
+            "latest_full_wip_cases": int(latest_work_in_progress["Total Work In Progress"]),
+            "latest_full_wip_post_decision_cases": int(latest_wip_stages["Post Decision"]),
+            "initial_decision_cases_june_2024": int(june_2024_queue["initial_decision_cases"]),
+            "initial_decision_cases_june_2026": int(june_2026_queue["initial_decision_cases"]),
+            "initial_decision_cases_reduction": int(
+                june_2024_queue["initial_decision_cases"] - june_2026_queue["initial_decision_cases"]
+            ),
+            "initial_decision_cases_reduction_share": float(
+                (june_2024_queue["initial_decision_cases"] - june_2026_queue["initial_decision_cases"])
+                / june_2024_queue["initial_decision_cases"]
+            ),
+            "latest_pending_people": int(june_2026_pending["people_awaiting_initial_decision"]),
+            "latest_pending_main_applicant_cases": int(
+                june_2026_pending["main_applicants_awaiting_initial_decision"]
+            ),
+            "tribunal_asylum_protection_cases_june_2024": int(
+                june_2024_queue["tribunal_asylum_protection_open_cases"]
+            ),
+            "tribunal_asylum_protection_cases_june_2026": int(
+                june_2026_queue["tribunal_asylum_protection_open_cases"]
+            ),
+            "tribunal_asylum_protection_cases_increase": int(
+                june_2026_queue["tribunal_asylum_protection_open_cases"]
+                - june_2024_queue["tribunal_asylum_protection_open_cases"]
+            ),
+            "tribunal_total_open_cases_june_2026": int(june_2026_queue["tribunal_total_open_cases"]),
         },
         "awaiting_comparison": {
             "june_2024": {
@@ -1439,6 +1531,39 @@ def chart_work_in_progress_stages(work_in_progress):
     save_chart(fig, "work-in-progress-stages")
 
 
+def chart_queue_shift(queue_indicators, work_in_progress):
+    data = queue_indicators
+    dates = pd.to_datetime(data["period_end"])
+    wip = work_in_progress.dropna(subset=["Total Work In Progress"])
+    wip_dates = pd.to_datetime(wip["period_end"])
+    fig, ax = plt.subplots(figsize=(11, 5), layout="constrained")
+    ax.plot(
+        dates, data["initial_decision_cases"], color=TEAL, linewidth=2.4, marker="o", markersize=3,
+        label="Awaiting initial decision (ASY_02)",
+    )
+    ax.plot(
+        dates, data["tribunal_asylum_protection_open_cases"], color=PURPLE, linewidth=2.3,
+        marker="o", markersize=3,
+        label="Open asylum/protection and revocation caseload (FIA_4)",
+    )
+    ax.scatter(
+        wip_dates, wip["Total Work In Progress"], color=GOLD, edgecolors="white", linewidths=.7,
+        s=42, zorder=4, label="Total WIP (ASY_03; June snapshots)",
+    )
+    maximum = max(
+        data["initial_decision_cases"].max(),
+        data["tribunal_asylum_protection_open_cases"].max(),
+        wip["Total Work In Progress"].max(),
+    )
+    ax.set_ylim(bottom=0)
+    format_count_axis(ax.yaxis, maximum)
+    ax.set_ylabel("Published caseloads (different definitions)", color=MUTED)
+    ax.set_title("Initial-decision, appeal and WIP caseloads", loc="left", color=INK, fontsize=15, pad=14)
+    style_quarter_axis(ax, "2016-10-01", "2026-06-30")
+    add_legend(fig, ax, ncol=1, fontsize=8.5)
+    save_chart(fig, "queue-shift")
+
+
 def chart_stock_and_returns(quarterly, work_in_progress):
     data = quarterly_flows_with_rolling_returns(quarterly)
     stock = data.dropna(subset=["people_awaiting_initial_decision"])
@@ -1465,9 +1590,9 @@ def chart_stock_and_returns(quarterly, work_in_progress):
     save_chart(fig, "stock-vs-returns")
 
 
-def write_outputs(metadata, tables, quarterly, work_in_progress, support):
+def write_outputs(metadata, tables, quarterly, work_in_progress, support, queue_indicators):
     DERIVED.mkdir(parents=True, exist_ok=True)
-    headlines = make_headlines(metadata, tables, quarterly, work_in_progress, support)
+    headlines = make_headlines(metadata, tables, quarterly, work_in_progress, support, queue_indicators)
     (DERIVED / "tables.json").write_text(
         json.dumps({"source": metadata, "tables": tables}, indent=2, allow_nan=False) + "\n",
         encoding="utf-8",
@@ -1503,6 +1628,9 @@ def write_outputs(metadata, tables, quarterly, work_in_progress, support):
     inadmissibility_series(tables).to_csv(
         DERIVED / "inadmissibility.csv", index=False, lineterminator="\n", na_rep=""
     )
+    queue_indicators.to_csv(
+        DERIVED / "queue-indicators.csv", index=False, lineterminator="\n", na_rep=""
+    )
     chart_claims_by_nationality(tables)
     chart_claims_by_age(tables)
     chart_claims_by_route(tables)
@@ -1523,6 +1651,7 @@ def write_outputs(metadata, tables, quarterly, work_in_progress, support):
     chart_quarterly_flows(quarterly)
     chart_quarterly_decision_outcomes(quarterly)
     chart_work_in_progress_stages(work_in_progress)
+    chart_queue_shift(queue_indicators, work_in_progress)
     chart_stock_and_returns(quarterly, work_in_progress)
 
 
@@ -1533,7 +1662,9 @@ def main():
     validate_quarterly_data(tables, quarterly, work_in_progress)
     support = load_support_data()
     validate_support_data(tables, support)
-    write_outputs(metadata, tables, quarterly, work_in_progress, support)
+    queue_indicators = load_queue_indicators()
+    validate_queue_indicators(queue_indicators, work_in_progress)
+    write_outputs(metadata, tables, quarterly, work_in_progress, support, queue_indicators)
     print("Parsed 18 summary tables and pinned quarterly data; source fingerprints and reconciliations validated.")
 
 
