@@ -475,6 +475,60 @@ def face_value_productivity(quarterly):
     return pd.concat([result, pd.DataFrame([latest_record])], ignore_index=True)
 
 
+def fvp_grant_rate_association(tables, quarterly):
+    fvp = face_value_productivity(quarterly).iloc[:-1].copy()
+    fvp["year"] = fvp["period"].astype(int)
+    grant_rates = pd.DataFrame(annual_rows(tables))[["year", "grant_rate_at_initial_decision"]]
+    result = fvp.merge(grant_rates, on="year", how="inner", validate="one_to_one")
+    result = result.rename(columns={"grant_rate_at_initial_decision": "published_grant_rate"})
+    result["next_year"] = result["year"] + 1
+    result["next_year_grant_rate"] = result["published_grant_rate"].shift(-1)
+    result["withdrawal_admin_share"] = (
+        (result["withdrawals"] + result["admin_outcomes"])
+        / result["all_initial_outcomes"] * 100
+    )
+    if result["year"].tolist() != list(range(2010, 2026)):
+        raise ValueError("The FVP and grant-rate comparison must cover calendar years 2010–2025.")
+    if result[["published_grant_rate", "year_end_people_awaiting_initial_decision"]].isna().any().any():
+        raise ValueError("The annual grant-rate comparison is missing a published rate or waiting stock.")
+    return result
+
+
+def fvp_grant_rate_correlations(frame):
+    def correlation(x, y):
+        pair = pd.concat([x, y], axis=1).dropna()
+        if len(pair) < 2:
+            return {"pearson_r": None, "n": int(len(pair))}
+        return {"pearson_r": round(float(pair.iloc[:, 0].corr(pair.iloc[:, 1])), 2), "n": int(len(pair))}
+
+    next_year = frame.dropna(subset=["next_year_grant_rate"])
+    earlier_grant_years = next_year.loc[next_year["next_year"].between(2011, 2020)]
+    excluding_2022_23 = next_year.loc[~next_year["next_year"].isin([2022, 2023])]
+    same_year_without_2022 = frame.loc[frame["year"] != 2022]
+    return {
+        "same_year": correlation(frame["fvp_all_per_100"], frame["published_grant_rate"]),
+        "same_year_excluding_2022": correlation(
+            same_year_without_2022["fvp_all_per_100"], same_year_without_2022["published_grant_rate"]
+        ),
+        "year_on_year_changes": correlation(
+            frame["fvp_all_per_100"].diff(), frame["published_grant_rate"].diff()
+        ),
+        "next_year": correlation(next_year["fvp_all_per_100"], next_year["next_year_grant_rate"]),
+        "next_year_grant_years_2011_2020": correlation(
+            earlier_grant_years["fvp_all_per_100"], earlier_grant_years["next_year_grant_rate"]
+        ),
+        "next_year_excluding_2022_2023": correlation(
+            excluding_2022_23["fvp_all_per_100"], excluding_2022_23["next_year_grant_rate"]
+        ),
+        "waiting_stock_same_year": correlation(
+            frame["year_end_people_awaiting_initial_decision"], frame["published_grant_rate"]
+        ),
+        "withdrawal_admin_share_same_year": correlation(
+            frame["withdrawal_admin_share"], frame["published_grant_rate"]
+        ),
+    }
+
+
 def support_series(support):
     by_accommodation = support.groupby(
         ["quarter", "period_end", "accommodation_type"], dropna=False
@@ -786,6 +840,8 @@ def make_headlines(metadata, tables, quarterly, work_in_progress, support, queue
     inadmissibility_totals = inadmissibility.iloc[-1]
     inadmissibility_identified = int(inadmissibility_totals["cumulative_identified"])
     fvp = face_value_productivity(quarterly).set_index("period")
+    fvp_grant = fvp_grant_rate_association(tables, quarterly)
+    fvp_grant_correlations = fvp_grant_rate_correlations(fvp_grant)
     accommodations = support_series(support)
     hotel_series = accommodations.dropna(subset=["hotel"])
     peak_hotel = hotel_series.loc[hotel_series["hotel"].idxmax()]
@@ -855,6 +911,12 @@ def make_headlines(metadata, tables, quarterly, work_in_progress, support, queue
             "cumulative_decisions_minus_claims_2010_2025": int(
                 fvp.loc["2025", "cumulative_gap"]
             ),
+        },
+        "fvp_grant_rate": {
+            "calendar_years": int(len(fvp_grant)),
+            "fvp_2022": float(fvp_grant.loc[fvp_grant["year"] == 2022, "fvp_all_per_100"].iloc[0]),
+            "grant_rate_2022": float(fvp_grant.loc[fvp_grant["year"] == 2022, "published_grant_rate"].iloc[0]),
+            "correlations": fvp_grant_correlations,
         },
         "children": {
             "children_decisions": value_for(children_table, "Children receiving initial decisions", latest),
@@ -1613,6 +1675,47 @@ def chart_decisions_minus_claims(quarterly):
     save_chart(fig, "decisions-minus-claims")
 
 
+def chart_fvp_grant_rate_association(frame):
+    data = frame.dropna(subset=["next_year_grant_rate"]).copy()
+    data["grant_rate_percent"] = data["next_year_grant_rate"] * 100
+    data["pair_label"] = data["year"].astype(str) + "→" + data["next_year"].astype(str).str[-2:]
+    phases = [
+        (data["next_year"] <= 2018, MUTED, "Earlier years (2011–18)"),
+        (data["next_year"].between(2019, 2022), "#b95f4b", "Queue build-up (2019–22)"),
+        (data["next_year"] >= 2023, TEAL, "Backlog clearance (2023–25)"),
+    ]
+    fig, ax = plt.subplots(figsize=(10.5, 6), layout="constrained")
+    for mask, color, label in phases:
+        points = data.loc[mask]
+        ax.scatter(
+            points["fvp_all_per_100"], points["grant_rate_percent"],
+            color=color, s=42, edgecolor="white", linewidth=.6, zorder=3, label=label,
+        )
+    label_offsets = {
+        2010: (5, 8), 2011: (16, 3), 2012: (-28, 12), 2013: (-29, -12),
+        2014: (12, 15), 2015: (12, -16), 2016: (-28, 4), 2017: (16, -16),
+        2018: (5, 8), 2019: (5, -14), 2020: (5, 8), 2021: (-27, -13),
+        2022: (5, 8), 2023: (5, -12), 2024: (5, 8),
+    }
+    for _, row in data.iterrows():
+        ax.annotate(
+            row["pair_label"],
+            (row["fvp_all_per_100"], row["grant_rate_percent"]),
+            xytext=label_offsets[int(row["year"])], textcoords="offset points", fontsize=7.5,
+            color=INK, annotation_clip=False,
+        )
+    ax.axvline(100, color=GRID, linewidth=1.4, linestyle=":", label="100 outcomes per 100 claims")
+    ax.set_xlim(left=0)
+    ax.set_ylim(bottom=0)
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda value, _: f"{value:.0f}%"))
+    ax.set_xlabel("FVP in year t (outcomes per 100 claims)", color=MUTED)
+    ax.set_ylabel("Published initial grant rate in year t+1", color=MUTED)
+    ax.set_title("FVP and the following year's grant rate", loc="left", color=INK, fontsize=15, pad=14)
+    style_axis(ax)
+    add_legend(fig, ax, ncol=2, fontsize=8.5)
+    save_chart(fig, "fvp-grant-rate")
+
+
 def chart_work_in_progress_stages(work_in_progress):
     data = work_in_progress_stages(work_in_progress)
     positions = list(range(len(data)))
@@ -1758,6 +1861,10 @@ def write_outputs(metadata, tables, quarterly, work_in_progress, support, queue_
     face_value_productivity(quarterly).to_csv(
         DERIVED / "face-value-productivity.csv", index=False, lineterminator="\n", na_rep=""
     )
+    fvp_grant = fvp_grant_rate_association(tables, quarterly)
+    fvp_grant.to_csv(
+        DERIVED / "fvp-grant-rate.csv", index=False, lineterminator="\n", na_rep=""
+    )
     support_series(support).to_csv(
         DERIVED / "quarterly-support-accommodation.csv", index=False, lineterminator="\n", na_rep=""
     )
@@ -1794,6 +1901,7 @@ def write_outputs(metadata, tables, quarterly, work_in_progress, support, queue_
     chart_quarterly_decision_outcomes(quarterly)
     chart_face_value_productivity(quarterly)
     chart_decisions_minus_claims(quarterly)
+    chart_fvp_grant_rate_association(fvp_grant)
     chart_work_in_progress_stages(work_in_progress)
     chart_queue_shift(queue_indicators, work_in_progress)
     chart_stock_and_returns(quarterly, work_in_progress)

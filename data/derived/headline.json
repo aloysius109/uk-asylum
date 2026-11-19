@@ -63,6 +63,45 @@
     "calendar_2025_decisions_minus_claims": 58819,
     "cumulative_decisions_minus_claims_2010_2025": -46892
   },
+  "fvp_grant_rate": {
+    "calendar_years": 16,
+    "fvp_2022": 32.70706369004389,
+    "grant_rate_2022": 0.758586195398466,
+    "correlations": {
+      "same_year": {
+        "pearson_r": -0.42,
+        "n": 16
+      },
+      "same_year_excluding_2022": {
+        "pearson_r": -0.22,
+        "n": 15
+      },
+      "year_on_year_changes": {
+        "pearson_r": -0.27,
+        "n": 15
+      },
+      "next_year": {
+        "pearson_r": -0.72,
+        "n": 15
+      },
+      "next_year_grant_years_2011_2020": {
+        "pearson_r": -0.58,
+        "n": 10
+      },
+      "next_year_excluding_2022_2023": {
+        "pearson_r": -0.45,
+        "n": 13
+      },
+      "waiting_stock_same_year": {
+        "pearson_r": 0.87,
+        "n": 16
+      },
+      "withdrawal_admin_share_same_year": {
+        "pearson_r": 0.82,
+        "n": 16
+      }
+    }
+  },
   "children": {
     "children_decisions": 17529,
     "children_granted": 6518,

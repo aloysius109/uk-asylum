@@ -142,6 +142,29 @@ The second chart shows the difference in counts directly. In 2022 outcomes were 
 
 These are people-based administrative flows, not linked claim cohorts, staff productivity or waiting-time measures. Administrative outcomes are recorded in the quarterly extract only from 2020, so earlier all-outcome totals have less complete coverage. Asylum Tracker’s separate **2025 UK FVP estimate of 116** uses UNHCR reporting data and a broader reporting basis; it is not directly comparable with this Home Office series. [Download the annual FVP series and flow gaps](data/derived/face-value-productivity.csv).
 
+### FVP and grant rates
+
+The relationship is **weakly negative in the same year**: across 2010–2025, the Pearson correlation between FVP and the Home Office’s published initial grant rate is **−0.42**. It is stronger when FVP in year *t* is compared with the grant rate in year *t*+1 (**−0.72**, 15 year-pairs). That means years when outcomes lag claims tended to be followed by higher grant rates, but the pattern weakens when the exceptional backlog years are set aside.
+
+![Annual FVP compared with the published initial grant rate in the following year, 2010–2024 FVP paired with 2011–2025 grant rates.](assets/fvp-grant-rate.svg){fig-alt="Each labelled point pairs FVP in one calendar year with the Home Office main-applicant initial grant rate in the following year. The correlation is negative overall but sensitive to the 2022–23 grant-rate years; this is descriptive, not causal."}
+
+| Comparison | Pearson *r* | *n* |
+|:--|--:|--:|
+| FVP and grant rate in the same year | −0.42 | 16 |
+| Same-year association, excluding 2022 | −0.22 | 15 |
+| Year-on-year change in FVP vs change in grant rate | −0.27 | 15 |
+| FVP in year *t* vs grant rate in year *t*+1 | −0.72 | 15 |
+| Next-year comparison, grant-rate years 2011–2020 only | −0.58 | 10 |
+| Next-year comparison, excluding grant-rate years 2022–23 | −0.45 | 13 |
+| People awaiting an initial decision at year-end vs grant rate in the same year | +0.87 | 16 |
+| Withdrawals and administrative outcomes as a share of outcomes vs grant rate in the same year | +0.82 | 16 |
+
+The wider pattern fits three periods in these annual figures: from 2019 to 2022 claims grew faster than decisions, FVP fell to **32.7** in 2022, and the grant rate rose to **75.9%**; in 2023 FVP rose to **139.9** while the grant rate remained **67.2%**; in 2024–25 FVP stayed above 100 while the grant rate fell to **47.3%** and then **42.1%**. A later [inspectorate report on asylum casework](https://assets.publishing.service.gov.uk/media/65e06d45f1cab36b60fc47ad/An_inspection_of_asylum_casework_June_to_October_2023.pdf) describes streamlined processing of some high-grant-rate legacy claims during backlog clearance. That is relevant external context, not a result demonstrated by this aggregate comparison; the tables do not show which nationalities or claim cohorts produced each year’s outcomes.
+
+The strong same-year association with the waiting stock (**+0.87**) suggests grant rates moved more closely with the size of the queue than with FVP alone. Withdrawals and administrative outcomes count in FVP but are excluded from the grant-rate denominator; their share of all recorded outcomes also rose alongside the rate (**+0.82**). The tables do not show what outcome withdrawn claims would otherwise have received, so they cannot quantify any effect on the published rate.
+
+These are only 16 annual observations, and adjacent years are not independent. FVP counts people and includes all recorded initial outcomes, while the published grant rate is for main applicants and divides grants by substantive decisions (grants plus refusals). Claims and decisions in a year are not linked cohorts. The correlations are descriptive, do not establish cause and effect, and may reflect changes in the nationalities and types of cases being decided. [Download the annual FVP and grant-rate comparison](data/derived/fvp-grant-rate.csv).
+
 Table `Asy_02a` separates the types of asylum-related grants. In the year ending June 2026 it records **42,394 asylum-related grants** and **3,840 resettlement arrivals**. Resettlement arrivals are plotted separately because they are not initial decisions; source blanks for temporary refugee permission are shown as zero only to render the chart, while remaining missing in the parsed data.
 
 ![Asylum-related grants by type and resettlement arrivals, calendar years 2010–2025.](assets/grant-types.svg){fig-alt="Stacked bars show six types of asylum-related grants from 2010 to 2025; a dashed line shows resettlement arrivals separately."}
@@ -308,6 +331,8 @@ The analysis parses 18 summary tables directly and validates the quarterly flow 
 
 The FVP series divides grants, refusals, withdrawals and administrative outcomes by claims in the same period, and reports outcomes per 100 claims. Its three-year mean is centred on each calendar year; the June 2026 point is a separate rolling-year ratio. The cumulative outcomes-minus-claims line covers calendar years 2010–2025 and is not a backlog estimate.
 
+The FVP/grant-rate comparison uses Pearson correlations between annual FVP (people, all recorded initial outcomes) and the published main-applicant grant rate; the lagged comparison pairs year *t* FVP with year *t*+1 rate. It includes 16 same-year observations and 15 lagged pairs, with no causal or statistical-significance claim; sensitivity checks exclude 2022 and 2022–23 grant-rate years.
+
 Count axes use comma-separated values below 10,000 and `K` abbreviations at or above that scale; this convention is implemented in `COUNT_AXIS_K_THRESHOLD` in `scripts/analyze.py`. Chart legends sit below the plot area rather than over the data, with clear space beneath the axis labels.
 
 In the grant-type chart, missing source values for temporary refugee permission are represented as zero only for plotting; the parsed source data preserve them as missing. Resettlement arrivals are shown separately from initial decisions.
@@ -329,6 +354,7 @@ These files are derived from the pinned workbook above. The all-table CSV is a l
 - [Source URL, retrieval time and SHA-256 (JSON)](data/raw/source.json)
 - [Quarterly claims, decisions, returns and pending stock (CSV)](data/derived/quarterly-flows.csv)
 - [Annual face-value productivity ratios and decisions-minus-claims gaps (CSV)](data/derived/face-value-productivity.csv)
+- [Annual FVP and published grant-rate comparison (CSV)](data/derived/fvp-grant-rate.csv)
 - [ASY_03 work-in-progress snapshots (CSV)](data/raw/asylum-work-in-progress.csv)
 - [ASY_03 work-in-progress stages and calculated shares (CSV)](data/derived/work-in-progress-stages.csv)
 - [Quarterly initial-decision, tribunal and WIP queue indicators (CSV)](data/derived/queue-indicators.csv)

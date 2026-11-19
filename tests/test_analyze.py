@@ -93,6 +93,9 @@ def test_all_chart_legends_are_outside_the_plot_area(monkeypatch):
     analyze.chart_quarterly_decision_outcomes(quarterly)
     analyze.chart_face_value_productivity(quarterly)
     analyze.chart_decisions_minus_claims(quarterly)
+    analyze.chart_fvp_grant_rate_association(
+        analyze.fvp_grant_rate_association(tables, quarterly)
+    )
     analyze.chart_work_in_progress_stages(work_in_progress)
     analyze.chart_queue_shift(queue_indicators, work_in_progress)
     analyze.chart_stock_and_returns(quarterly, work_in_progress)
@@ -103,7 +106,7 @@ def test_all_chart_legends_are_outside_the_plot_area(monkeypatch):
         "annual-claims-decisions", "small-boat-grant-rates", "inadmissibility-quarterly", "waiting-times",
         "hotel-accommodation", "hotel-by-region", "quarterly-flows-returns",
         "quarterly-claims-outcomes", "face-value-productivity", "decisions-minus-claims",
-        "work-in-progress-stages", "queue-shift", "stock-vs-returns",
+        "fvp-grant-rate", "work-in-progress-stages", "queue-shift", "stock-vs-returns",
     }
 
 
@@ -137,6 +140,31 @@ def test_face_value_productivity_reconciles_annual_and_rolling_flows():
     assert round(latest["fvp_all_per_100"], 1) == 156.6
     assert latest["year_end_people_awaiting_initial_decision"] == 40168
     assert pd.isna(latest["cumulative_gap"])
+
+
+def test_fvp_grant_rate_association_uses_published_rates_and_reproducible_correlations():
+    _, tables = load_tables()
+    quarterly, _ = load_quarterly_data()
+    frame = analyze.fvp_grant_rate_association(tables, quarterly)
+    correlations = analyze.fvp_grant_rate_correlations(frame)
+
+    assert len(frame) == 16
+    assert frame["year"].tolist() == list(range(2010, 2026))
+    year_2022 = frame.loc[frame["year"] == 2022].iloc[0]
+    assert round(year_2022["fvp_all_per_100"], 1) == 32.7
+    assert round(year_2022["published_grant_rate"] * 100, 1) == 75.9
+    assert frame.loc[frame["year"] == 2022, "next_year_grant_rate"].iloc[0] == value_for(
+        tables["Asy_00a"], "Grant rate at initial decision", "2023"
+    )
+    assert pd.isna(frame.iloc[-1]["next_year_grant_rate"])
+    assert correlations["same_year"] == {"pearson_r": -0.42, "n": 16}
+    assert correlations["same_year_excluding_2022"] == {"pearson_r": -0.22, "n": 15}
+    assert correlations["year_on_year_changes"] == {"pearson_r": -0.27, "n": 15}
+    assert correlations["next_year"] == {"pearson_r": -0.72, "n": 15}
+    assert correlations["next_year_grant_years_2011_2020"] == {"pearson_r": -0.58, "n": 10}
+    assert correlations["next_year_excluding_2022_2023"] == {"pearson_r": -0.45, "n": 13}
+    assert correlations["waiting_stock_same_year"] == {"pearson_r": 0.87, "n": 16}
+    assert correlations["withdrawal_admin_share_same_year"] == {"pearson_r": 0.82, "n": 16}
 
 
 def test_inadmissibility_series_reconcile_and_report_event_ratios():
