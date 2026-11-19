@@ -146,9 +146,47 @@ Rates by nationality describe recorded initial decisions for cases in the stated
 
 ## Inadmissibility
 
-Table `Asy_02e` reports people identified for consideration under inadmissibility rules, notices of intent, inadmissibility decisions, removals and people subsequently admitted to the UK asylum process. It is a sequence of administrative stages, not a count of people refused protection on the merits. A notice of intent is not itself a final inadmissibility decision, and later admission to the asylum process is represented separately.
+Table `Asy_02e` reports people identified for consideration under inadmissibility rules, notices of intent, inadmissibility decisions, removals and people subsequently admitted to the UK asylum process. A notice of intent is not itself a final inadmissibility decision, and inadmissibility is not a refusal of the asylum claim on its merits.
 
-From 2021 Q1 to 2026 Q2, the table records **108,455 identification events**, **105,828 subsequent-admission events**, and **1,133 removals**. The admission and removal totals are about **97.6%** and **1.0%** of the identification total respectively, but these are comparisons of aggregate event counts—not person-level rates. The table does not link the people identified to later outcomes, so it cannot tell us how many of those same people were admitted or removed, or why someone was later admitted to the asylum process.
+:::: {.metric-row .inadmissibility}
+:::: {.metric-card}
+<span class="metric">105,828</span>
+<span class="metric-label">Subsequent-admission events</span>
+<span class="metric-note">97.6% of identification events in the period; not a linked-person rate</span>
+::::
+
+:::: {.metric-card}
+<span class="metric">108,455</span>
+<span class="metric-label">Identification events</span>
+<span class="metric-note">2021 Q1–2026 Q2</span>
+::::
+
+:::: {.metric-card}
+<span class="metric">1,133</span>
+<span class="metric-label">Enforced removal events</span>
+<span class="metric-note">1.0% of identification events; voluntary returns excluded</span>
+::::
+::::
+
+**The headline is the contrast:** the Home Office recorded nearly as many subsequent-admission events as identification events, but very few removals in the same period. These are aggregate event counts, not outcomes linked to the same people; the table cannot tell us what happened to each person identified or why they were later admitted.
+
+:::: {.callout-note}
+### What does “inadmissibility” mean, and when did it begin?
+
+An asylum claim may be declared inadmissible when the claimant has a legally defined connection to a **safe third country**—for example, protection there, a claim for protection there, or a reasonable opportunity to seek it. The UK then does not substantively consider the claim at that stage. This is not a finding that the claim is unfounded or that the person can in practice be removed. The main framework is in sections 80B–80C of the [Nationality, Immigration and Asylum Act 2002](https://www.legislation.gov.uk/ukpga/2002/41/part/4A); separate section 80A rules apply to EU nationals.
+
+The post-Brexit rules began on **1 January 2021**, in [Immigration Rules paragraphs 345A–345D](https://www.gov.uk/government/publications/statement-of-changes-to-the-immigration-rules-hc-1043-10-december-2020/statement-of-changes-to-the-immigration-rules-hc-1043-10-december-2020-accessible-version), as the UK left the EU’s Dublin asylum-transfer arrangements. The [Nationality and Borders Act 2022](https://www.legislation.gov.uk/ukpga/2022/36/section/17) later put the main safe-third-country framework into primary legislation for claims from **28 June 2022**.
+::::
+
+:::: {.callout-note}
+### Why are so many later admitted to the UK asylum process?
+
+Inadmissibility only avoids a UK decision on the asylum claim if removal to a safe third country can actually happen. The rule is explicit: under [paragraph 345D](https://www.gov.uk/guidance/immigration-rules/immigration-rules-part-11-asylum), when removal within a reasonable period is unlikely, the claim **must be admitted for consideration in the UK**. A transfer also depends on a safe country being willing and able to receive the person; the `Asy_02e` table does not record the reason for any individual admission.
+
+The UK’s broad Dublin transfer system ended when the Brexit transition period ended, and replacement arrangements have been limited. The Home Office discontinued its Rwanda removal policy in July 2024. The UK–France agreement, operational from **6 August 2025**, created a specific return route for some people arriving by small boat; a separate Home Office release records **1,087 returns to France** under that agreement between 6 August 2025 and 30 June 2026. Before that agreement, the Home Office table recorded only **38 removal events from January 2021 through June 2025**. The France figure comes from a different publication and is not a person-level reconciliation with `Asy_02e`.
+
+So the rules and limited practical transfer routes help explain the large gap between admission and removal events. They do **not** prove why any particular person was admitted, and the aggregate figures should not be read as a cohort conversion rate.
+::::
 
 ![Quarterly inadmissibility-related identifications, notices, subsequent admissions, decisions served and removals, 2021 Q1–2026 Q2.](assets/inadmissibility-quarterly.svg){fig-alt="Quarterly lines show people identified for inadmissibility consideration, notices of intent and later admissions to the asylum process. Bars use a separate right-hand scale for inadmissibility decisions served and removals."}
 
@@ -250,7 +288,7 @@ The lines use a common count scale to show their different magnitudes, but their
 
 ## Data, definitions and reproducibility
 
-This edition uses the Home Office **asylum summary tables, year ending June 2026**, published on 27 August 2026, alongside reviewed quarterly extracts from the asylum claims, pending, returns, migration-transparency and asylum-support workbooks and the Ministry of Justice’s [**Tribunal Statistics Quarterly, April to June 2026**](https://www.gov.uk/government/statistics/tribunals-statistics-quarterly-april-to-june-2026) main tables. The summary ODS fingerprint is recorded in `data/raw/source.json`; quarterly workbook and extract hashes are recorded in `data/raw/quarterly-sources.json`. The analysis refuses to run if the ODS or any committed quarterly extract differs from its pinned hash. Rendering the report does not download or silently replace source data.
+This edition uses the Home Office **asylum summary tables, year ending June 2026**, published on 27 August 2026, alongside reviewed quarterly extracts from the asylum claims, pending, returns, migration-transparency and asylum-support workbooks and the Ministry of Justice’s [**Tribunal Statistics Quarterly, April to June 2026**](https://www.gov.uk/government/statistics/tribunals-statistics-quarterly-april-to-june-2026) main tables. The inadmissibility explanation follows the Home Office’s [safe-third-country caseworker guidance](https://www.gov.uk/government/publications/inadmissibility-third-country-cases) and [Immigration Rules, Part 11](https://www.gov.uk/guidance/immigration-rules/immigration-rules-part-11-asylum); the transfer-history context is cross-checked against the [House of Commons Library briefing](https://commonslibrary.parliament.uk/research-briefings/cbp-9724/) and Home Office publications on the [Rwanda policy](https://www.gov.uk/government/publications/asylum-claims-under-the-migration-and-economic-development-partnership) and [UK–France returns](https://www.gov.uk/government/publications/the-border-security-commanders-annual-report-data/transfers-into-and-returns-from-the-united-kingdom-under-the-uk-france-agreement-on-the-prevention-of-dangerous-journeys-between-6-august-2025-and-30). The summary ODS fingerprint is recorded in `data/raw/source.json`; quarterly workbook and extract hashes are recorded in `data/raw/quarterly-sources.json`. The analysis refuses to run if the ODS or any committed quarterly extract differs from its pinned hash. Rendering the report does not download or silently replace source data.
 
 The analysis parses 18 summary tables directly and validates the quarterly flow extracts against `Asy_00a` for calendar years 2010–2025, the year ending June 2026 and the latest pending stock. D03 main-applicant pending counts reconcile to the `Asy_00a` case total in June 2026; the June 2024 D03 and ASY_03 figures are shown side by side but remain separate source measures. `Asy_02e` quarterly event values reconcile to its published totals; its admission/removal comparisons are not person-level outcomes. The `ASY_02` initial-decision waiting bands sum to the published total and match `ASY_03` awaiting counts at June snapshots from 2017 through 2024. MoJ `FIA_4` financial-year quarters are mapped to calendar quarters; its tribunal caseload is shown as a separate indicator, not added to Home Office WIP. Support and hotel counts are reconciled for year-end 2022–2025 and June 2026; regional hotel counts also sum to the national totals. ASY_03 stage counts reconcile to the total WIP count; June 2024 has only the awaiting and aggregate post-decision split, and “On Hold” is excluded from the lower-bound count of cases beyond an initial decision. The ASY_03 work-in-progress series ends in June 2024. Cells marked `z`, `:`, `-`, or similar source suppression or non-applicability markers remain missing; they are never converted into zero. Calendar years, rolling years and quarters remain distinct. The 2011 claim total in `Asy_00a` differs by six from `Asy_01a`; the tables retain the source figures and are not forcibly reconciled across tables.
 
