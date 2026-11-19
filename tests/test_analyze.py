@@ -49,37 +49,10 @@ def test_all_chart_legends_are_outside_the_plot_area(monkeypatch):
     validate_queue_indicators(queue_indicators, work_in_progress)
     support = load_support_data()
     rendered = []
-    monkeypatch.setattr(analyze, "save_chart", lambda fig, name: rendered.append((name, fig)))
 
-    try:
-        analyze.chart_annual_flows(tables)
-        analyze.chart_claims_by_nationality(tables)
-        analyze.chart_claims_by_age(tables)
-        analyze.chart_claims_by_route(tables)
-        analyze.chart_nationality_routes(tables)
-        analyze.chart_grant_types(tables)
-        analyze.chart_children_decisions(tables)
-        analyze.chart_uasc_grant_rate(tables)
-        analyze.chart_age_assessments(tables)
-        analyze.chart_small_boat_rates(tables)
-        analyze.chart_inadmissibility_quarterly(tables)
-        analyze.chart_waiting_times(tables)
-        analyze.chart_hotel_accommodation(support)
-        analyze.chart_hotel_regions(support)
-        analyze.chart_quarterly_flows(quarterly)
-        analyze.chart_quarterly_decision_outcomes(quarterly)
-        analyze.chart_work_in_progress_stages(work_in_progress)
-        analyze.chart_queue_shift(queue_indicators, work_in_progress)
-        analyze.chart_stock_and_returns(quarterly, work_in_progress)
-
-        assert {name for name, _ in rendered} == {
-            "claims-by-nationality", "claims-by-age", "claims-by-route", "nationality-routes",
-            "grant-types", "children-decisions", "uasc-grant-rate", "age-assessments",
-            "annual-claims-decisions", "small-boat-grant-rates", "inadmissibility-quarterly", "waiting-times",
-            "hotel-accommodation", "hotel-by-region", "quarterly-flows-returns",
-            "quarterly-claims-outcomes", "work-in-progress-stages", "queue-shift", "stock-vs-returns",
-        }
-        for name, fig in rendered:
+    def check_chart(fig, name):
+        rendered.append(name)
+        try:
             fig.canvas.draw()
             assert len(fig.legends) == 1, name
             assert fig.axes[0].get_legend() is None, name
@@ -97,9 +70,73 @@ def test_all_chart_legends_are_outside_the_plot_area(monkeypatch):
             )
             gap_points = (decorations_bottom - legend_top) * 72 / fig.dpi
             assert gap_points >= 14, f"{name}: legend is {gap_points:.1f}pt below the axis label"
-    finally:
-        for _, fig in rendered:
+        finally:
             analyze.plt.close(fig)
+
+    monkeypatch.setattr(analyze, "save_chart", check_chart)
+
+    analyze.chart_annual_flows(tables)
+    analyze.chart_claims_by_nationality(tables)
+    analyze.chart_claims_by_age(tables)
+    analyze.chart_claims_by_route(tables)
+    analyze.chart_nationality_routes(tables)
+    analyze.chart_grant_types(tables)
+    analyze.chart_children_decisions(tables)
+    analyze.chart_uasc_grant_rate(tables)
+    analyze.chart_age_assessments(tables)
+    analyze.chart_small_boat_rates(tables)
+    analyze.chart_inadmissibility_quarterly(tables)
+    analyze.chart_waiting_times(tables)
+    analyze.chart_hotel_accommodation(support)
+    analyze.chart_hotel_regions(support)
+    analyze.chart_quarterly_flows(quarterly)
+    analyze.chart_quarterly_decision_outcomes(quarterly)
+    analyze.chart_face_value_productivity(quarterly)
+    analyze.chart_decisions_minus_claims(quarterly)
+    analyze.chart_work_in_progress_stages(work_in_progress)
+    analyze.chart_queue_shift(queue_indicators, work_in_progress)
+    analyze.chart_stock_and_returns(quarterly, work_in_progress)
+
+    assert set(rendered) == {
+        "claims-by-nationality", "claims-by-age", "claims-by-route", "nationality-routes",
+        "grant-types", "children-decisions", "uasc-grant-rate", "age-assessments",
+        "annual-claims-decisions", "small-boat-grant-rates", "inadmissibility-quarterly", "waiting-times",
+        "hotel-accommodation", "hotel-by-region", "quarterly-flows-returns",
+        "quarterly-claims-outcomes", "face-value-productivity", "decisions-minus-claims",
+        "work-in-progress-stages", "queue-shift", "stock-vs-returns",
+    }
+
+
+def test_face_value_productivity_reconciles_annual_and_rolling_flows():
+    _, tables = load_tables()
+    quarterly, work_in_progress = load_quarterly_data()
+    validate_quarterly_data(tables, quarterly, work_in_progress)
+    fvp = analyze.face_value_productivity(quarterly).set_index("period")
+
+    assert len(fvp) == 17
+    assert round(fvp.loc["2022", "fvp_all_per_100"], 1) == 32.7
+    assert round(fvp.loc["2022", "fvp_substantive_per_100"], 1) == 24.0
+    assert fvp.loc["2022", "all_initial_outcomes"] - fvp.loc["2022", "claims"] == -63933
+    assert fvp.loc["2022", "decisions_minus_claims"] == -63933
+    assert fvp.loc["2025", "decisions_minus_claims"] == 58819
+    assert round(fvp.loc["2025", "fvp_all_per_100"], 1) == 157.7
+    assert round(fvp.loc["2025", "fvp_substantive_per_100"], 1) == 133.2
+    assert fvp.loc["2025", "cumulative_gap"] == -46892
+
+    for year in range(2010, 2026):
+        row = fvp.loc[str(year)]
+        assert row["claims"] == value_for(tables["Asy_00a"], "People claiming asylum", str(year))
+        assert row["substantive_decisions"] == value_for(
+            tables["Asy_00a"], "People receiving initial decisions", str(year)
+        )
+
+    latest = fvp.loc["Year ending June 2026"]
+    assert latest["claims"] == 85891
+    assert latest["substantive_decisions"] == 115872
+    assert latest["all_initial_outcomes"] == 134484
+    assert round(latest["fvp_all_per_100"], 1) == 156.6
+    assert latest["year_end_people_awaiting_initial_decision"] == 40168
+    assert pd.isna(latest["cumulative_gap"])
 
 
 def test_inadmissibility_series_reconcile_and_report_event_ratios():

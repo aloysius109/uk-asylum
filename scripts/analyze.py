@@ -418,6 +418,63 @@ def quarterly_flows_with_rolling_returns(quarterly):
     return result
 
 
+def face_value_productivity(quarterly):
+    data = quarterly.copy()
+    data["year"] = data["quarter"].str[:4].astype(int)
+    outcome_columns = ["grants", "refusals", "withdrawals", "admin_outcomes"]
+    records = []
+    for year, group in data.loc[data["year"] <= 2025].groupby("year", sort=True):
+        claims = int(group["claims"].sum())
+        substantive_decisions = int(group["substantive_decisions"].sum())
+        all_initial_outcomes = int(group[outcome_columns].sum().sum())
+        year_end = group.loc[group["quarter"].str.endswith("Q4")].iloc[-1]
+        records.append({
+            "period": str(year),
+            "claims": claims,
+            "substantive_decisions": substantive_decisions,
+            "withdrawals": int(group["withdrawals"].sum()),
+            "admin_outcomes": int(group["admin_outcomes"].sum()),
+            "all_initial_outcomes": all_initial_outcomes,
+            "fvp_all_per_100": all_initial_outcomes / claims * 100,
+            "fvp_substantive_per_100": substantive_decisions / claims * 100,
+            "decisions_minus_claims": all_initial_outcomes - claims,
+            "year_end_people_awaiting_initial_decision": year_end[
+                "people_awaiting_initial_decision"
+            ],
+        })
+
+    result = pd.DataFrame(records)
+    result["fvp_all_3yr_mean"] = result["fvp_all_per_100"].rolling(
+        3, center=True, min_periods=1
+    ).mean()
+    result["cumulative_gap"] = result["decisions_minus_claims"].cumsum()
+
+    latest = data.loc[data["quarter"].isin(["2025 Q3", "2025 Q4", "2026 Q1", "2026 Q2"])]
+    if len(latest) != 4:
+        raise ValueError("The quarterly extract is missing a period in the year ending June 2026.")
+    claims = int(latest["claims"].sum())
+    substantive_decisions = int(latest["substantive_decisions"].sum())
+    all_initial_outcomes = int(latest[outcome_columns].sum().sum())
+    latest_stock = latest.loc[latest["quarter"] == "2026 Q2"].iloc[0]
+    latest_record = {
+        "period": "Year ending June 2026",
+        "claims": claims,
+        "substantive_decisions": substantive_decisions,
+        "withdrawals": int(latest["withdrawals"].sum()),
+        "admin_outcomes": int(latest["admin_outcomes"].sum()),
+        "all_initial_outcomes": all_initial_outcomes,
+        "fvp_all_per_100": all_initial_outcomes / claims * 100,
+        "fvp_substantive_per_100": substantive_decisions / claims * 100,
+        "fvp_all_3yr_mean": None,
+        "decisions_minus_claims": all_initial_outcomes - claims,
+        "cumulative_gap": None,
+        "year_end_people_awaiting_initial_decision": latest_stock[
+            "people_awaiting_initial_decision"
+        ],
+    }
+    return pd.concat([result, pd.DataFrame([latest_record])], ignore_index=True)
+
+
 def support_series(support):
     by_accommodation = support.groupby(
         ["quarter", "period_end", "accommodation_type"], dropna=False
@@ -728,6 +785,7 @@ def make_headlines(metadata, tables, quarterly, work_in_progress, support, queue
     inadmissibility = inadmissibility_series(tables)
     inadmissibility_totals = inadmissibility.iloc[-1]
     inadmissibility_identified = int(inadmissibility_totals["cumulative_identified"])
+    fvp = face_value_productivity(quarterly).set_index("period")
     accommodations = support_series(support)
     hotel_series = accommodations.dropna(subset=["hotel"])
     peak_hotel = hotel_series.loc[hotel_series["hotel"].idxmax()]
@@ -773,6 +831,30 @@ def make_headlines(metadata, tables, quarterly, work_in_progress, support, queue
             "resettlement_arrivals": value_for(grant_types, "Resettlement arrivals", latest),
             "total_grants_and_arrivals": value_for(grant_types, "Total", latest),
             "published_initial_decisions": value_for(decision_table, "People receiving initial decisions", latest),
+        },
+        "face_value_productivity": {
+            "latest_period": "Year ending June 2026",
+            "latest_claims": int(fvp.loc["Year ending June 2026", "claims"]),
+            "latest_all_initial_outcomes": int(
+                fvp.loc["Year ending June 2026", "all_initial_outcomes"]
+            ),
+            "latest_fvp_all_per_100": float(
+                fvp.loc["Year ending June 2026", "fvp_all_per_100"]
+            ),
+            "calendar_2022_fvp_all_per_100": float(fvp.loc["2022", "fvp_all_per_100"]),
+            "calendar_2025_fvp_all_per_100": float(fvp.loc["2025", "fvp_all_per_100"]),
+            "calendar_2025_fvp_substantive_per_100": float(
+                fvp.loc["2025", "fvp_substantive_per_100"]
+            ),
+            "calendar_2022_decisions_minus_claims": int(
+                fvp.loc["2022", "decisions_minus_claims"]
+            ),
+            "calendar_2025_decisions_minus_claims": int(
+                fvp.loc["2025", "decisions_minus_claims"]
+            ),
+            "cumulative_decisions_minus_claims_2010_2025": int(
+                fvp.loc["2025", "cumulative_gap"]
+            ),
         },
         "children": {
             "children_decisions": value_for(children_table, "Children receiving initial decisions", latest),
@@ -1474,6 +1556,63 @@ def chart_quarterly_decision_outcomes(quarterly):
     save_chart(fig, "quarterly-claims-outcomes")
 
 
+def chart_face_value_productivity(quarterly):
+    data = face_value_productivity(quarterly)
+    annual = data.iloc[:-1]
+    positions = list(range(len(annual)))
+    latest_position = len(annual)
+    fig, ax = plt.subplots(figsize=(11, 5), layout="constrained")
+    ax.plot(positions, annual["fvp_all_per_100"], color="#b9c9bf", linewidth=1.5,
+            marker="o", markersize=3, label="All recorded initial outcomes")
+    ax.plot(positions, annual["fvp_all_3yr_mean"], color=TEAL, linewidth=2.5,
+            label="Three-year centred mean")
+    ax.plot(positions, annual["fvp_substantive_per_100"], color=GOLD, linewidth=1.8,
+            linestyle="--", label="Substantive decisions only")
+    latest = data.iloc[-1]
+    ax.scatter([latest_position], [latest["fvp_all_per_100"]], color="#b95f4b", marker="D",
+               s=44, zorder=4, label="Year ending June 2026")
+    ax.axhline(100, color=MUTED, linewidth=1.2, linestyle=":",
+               label="100 outcomes per 100 claims")
+    ax.set_xticks([*range(0, len(annual), 2), latest_position],
+                  [*[str(year) for year in range(2010, 2026, 2)], "YE Jun 2026"])
+    ax.set_xlim(-.5, latest_position + .5)
+    ax.set_ylim(bottom=0)
+    ax.set_ylabel("Initial outcomes per 100 people claiming", color=MUTED)
+    ax.set_xlabel("Calendar year; final point is a rolling year", color=MUTED)
+    ax.set_title("Face-value productivity: outcomes relative to claims", loc="left",
+                 color=INK, fontsize=15, pad=14)
+    style_axis(ax)
+    ax.tick_params(axis="x", labelsize=8, pad=6)
+    add_legend(fig, ax, ncol=3, fontsize=8.2)
+    save_chart(fig, "face-value-productivity")
+
+
+def chart_decisions_minus_claims(quarterly):
+    data = face_value_productivity(quarterly).iloc[:-1]
+    positions = list(range(len(data)))
+    gaps = data["decisions_minus_claims"]
+    max_gap = max(gaps.abs().max(), data["cumulative_gap"].abs().max())
+    fig, ax = plt.subplots(figsize=(11, 5), layout="constrained")
+    shortfall = gaps.clip(upper=0)
+    surplus = gaps.clip(lower=0)
+    ax.bar(positions, shortfall, color="#b95f4b", width=.72, label="Outcomes below claims")
+    ax.bar(positions, surplus, color=TEAL, width=.72, label="Outcomes above claims")
+    ax.plot(positions, data["cumulative_gap"], color=PURPLE, linewidth=2.2, marker="o",
+            markersize=3, label="Cumulative difference, 2010 onward")
+    ax.axhline(0, color=MUTED, linewidth=.9)
+    ax.set_xticks(positions, data["period"])
+    ax.set_xlim(-.6, len(data) - .4)
+    ax.set_ylim(-max_gap * 1.15, max_gap * 1.15)
+    format_count_axis(ax.yaxis, max_gap)
+    ax.set_ylabel("People (recorded outcomes minus claims)", color=MUTED)
+    ax.set_title("Annual and cumulative difference between outcomes and claims", loc="left",
+                 color=INK, fontsize=15, pad=14)
+    style_axis(ax)
+    ax.tick_params(axis="x", labelsize=8, pad=6, rotation=45)
+    add_legend(fig, ax, ncol=3, fontsize=8.5)
+    save_chart(fig, "decisions-minus-claims")
+
+
 def chart_work_in_progress_stages(work_in_progress):
     data = work_in_progress_stages(work_in_progress)
     positions = list(range(len(data)))
@@ -1616,6 +1755,9 @@ def write_outputs(metadata, tables, quarterly, work_in_progress, support, queue_
     quarterly_flows_with_rolling_returns(quarterly).to_csv(
         DERIVED / "quarterly-flows.csv", index=False, lineterminator="\n", na_rep=""
     )
+    face_value_productivity(quarterly).to_csv(
+        DERIVED / "face-value-productivity.csv", index=False, lineterminator="\n", na_rep=""
+    )
     support_series(support).to_csv(
         DERIVED / "quarterly-support-accommodation.csv", index=False, lineterminator="\n", na_rep=""
     )
@@ -1650,6 +1792,8 @@ def write_outputs(metadata, tables, quarterly, work_in_progress, support, queue_
     chart_hotel_regions(support)
     chart_quarterly_flows(quarterly)
     chart_quarterly_decision_outcomes(quarterly)
+    chart_face_value_productivity(quarterly)
+    chart_decisions_minus_claims(quarterly)
     chart_work_in_progress_stages(work_in_progress)
     chart_queue_shift(queue_indicators, work_in_progress)
     chart_stock_and_returns(quarterly, work_in_progress)

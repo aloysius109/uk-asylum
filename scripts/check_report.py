@@ -46,6 +46,7 @@ def main():
     awaiting_comparison = headlines["awaiting_comparison"]
     inadmissibility = headlines["inadmissibility"]
     wip_now = headlines["wip_now"]
+    fvp = headlines["face_value_productivity"]
 
     require(annual["people_claiming_asylum"] == 101911, "Calendar 2025 claims changed from the report headline.")
     require(round(annual["published_initial_grant_rate_main_applicants"] * 100, 1) == 42.1,
@@ -91,6 +92,17 @@ def main():
             and decisions["resettlement_arrivals"] == 3840
             and decisions["total_grants_and_arrivals"] == 46234,
             "The year-ending-June 2026 claims and decision figures changed.")
+    require(fvp["latest_period"] == "Year ending June 2026"
+            and fvp["latest_claims"] == 85891
+            and fvp["latest_all_initial_outcomes"] == 134484
+            and round(fvp["latest_fvp_all_per_100"], 1) == 156.6
+            and round(fvp["calendar_2022_fvp_all_per_100"], 1) == 32.7
+            and round(fvp["calendar_2025_fvp_all_per_100"], 1) == 157.7
+            and round(fvp["calendar_2025_fvp_substantive_per_100"], 1) == 133.2
+            and fvp["calendar_2022_decisions_minus_claims"] == -63933
+            and fvp["calendar_2025_decisions_minus_claims"] == 58819
+            and fvp["cumulative_decisions_minus_claims_2010_2025"] == -46892,
+            "The face-value productivity ratios or outcome-claims gaps changed.")
     require(children["children_decisions"] == 17529
             and children["children_granted"] == 6518
             and children["children_refused"] == 11011
@@ -163,6 +175,12 @@ def main():
         "shown as zero only to render the chart",
         "In 2024, the published total is one higher than the sum of the grant components and resettlement arrivals",
         "A claim and an outcome in the same quarter do not necessarily concern the same people",
+        "face-value productivity (FVP)", "outcomes per 100 claims", "32.7 outcomes per 100 claims in 2022",
+        "139.9 in 2023", "157.7 in 2025", "134,484 outcomes against 85,891 claims",
+        "156.6 per 100", "63,933 below claims", "58,819 above claims", "−46,892",
+        "not an estimate of the current backlog", "may include legacy claims from before this series begins",
+        "staff productivity or waiting-time measures", "only from 2020",
+        "2025 UK FVP estimate of 116", "not directly comparable with this Home Office series",
         "17,529 initial decisions involving children", "6,518 resulted in grants",
         "11,011 in refusals", "4,051 UASC", "2,329 were granted and 1,722 refused",
         "57.5%", "6,409 assessments were raised", "6,265 were closed",
@@ -219,6 +237,7 @@ def main():
         "data/raw/asylum-summary-jun-2026.ods",
         "data/raw/source.json",
         "data/derived/quarterly-flows.csv",
+        "data/derived/face-value-productivity.csv",
         "data/raw/asylum-work-in-progress.csv",
         "data/derived/work-in-progress-stages.csv",
         "data/derived/queue-indicators.csv",
@@ -234,7 +253,7 @@ def main():
     require(len(download) == 2, "Download section is missing.")
     content = download[1].split("\n## Related reports", 1)[0]
     links = re.findall(r"\[[^\]]+\]\(([^)]+)\)", content)
-    require(len(links) == 15, "Expected fifteen reader-facing data download links.")
+    require(len(links) == 16, "Expected sixteen reader-facing data download links.")
     for link in links:
         require((ROOT / link).is_file(), f"Download target does not exist: {link}")
 
@@ -243,14 +262,15 @@ def main():
         "grant-types.svg", "children-decisions.svg", "uasc-grant-rate.svg", "age-assessments.svg",
         "annual-claims-decisions.svg", "initial-grant-rates.svg", "small-boat-grant-rates.svg",
         "waiting-times.svg", "asylum-support.svg", "quarterly-flows-returns.svg",
-        "quarterly-claims-outcomes.svg", "stock-vs-returns.svg",
+        "quarterly-claims-outcomes.svg", "face-value-productivity.svg", "decisions-minus-claims.svg",
+        "stock-vs-returns.svg",
         "hotel-accommodation.svg", "hotel-by-region.svg", "work-in-progress-stages.svg",
         "inadmissibility-quarterly.svg", "inadmissibility-totals.svg", "queue-shift.svg",
     ]:
         require((ROOT / "assets" / chart).is_file(), f"Expected report chart is missing: {chart}")
         require(f"assets/{chart}" in report, f"Report does not reference its chart: {chart}")
 
-    print("Report QA passed: pinned figures, unit distinctions, twenty-two charts and fifteen downloads are consistent.")
+    print("Report QA passed: pinned figures, unit distinctions, twenty-four charts and sixteen downloads are consistent.")
 
 
 if __name__ == "__main__":

@@ -4,6 +4,8 @@ A reproducible UK report built from the Home Office asylum summary tables, year 
 
 The report is intentionally separate from [Asylum Tracker](https://github.com/aloysius109/asylum-tracker), which combines global UNHCR analysis with a shorter UK comparison. This project focuses on the wider Home Office summary tables.
 
+The Decisions and outcomes section estimates face-value productivity (FVP) as all recorded initial outcomes—including withdrawals and administrative outcomes—per 100 claims received in the same period. It includes a three-year centred trend, a separate rolling year ending June 2026, and annual/cumulative outcomes-minus-claims gaps; these are flow comparisons, not staff productivity or a direct estimate of the current backlog.
+
 Published report: <https://aloysius109.github.io/uk-asylum/>.
 
 ## Source edition

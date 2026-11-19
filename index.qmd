@@ -128,6 +128,20 @@ The quarterly chart compares people claiming asylum with the recorded outcome gr
 
 ![Quarterly asylum claims compared with grants, refusals, withdrawals and administrative outcomes from 2010 Q1 to 2026 Q2.](assets/quarterly-claims-outcomes.svg){fig-alt="Quarterly bars stack grants, refusals, withdrawals and administrative outcomes; a line shows asylum claims. Claims and outcomes are separate period flows, not linked cohorts."}
 
+### Face-value productivity
+
+We estimate **face-value productivity (FVP)** as recorded initial outcomes divided by claims received in the same period, expressed as outcomes per 100 claims. Following the broad all-decision approach used in the UNHCR report, the numerator includes grants, refusals, withdrawals and administrative outcomes—not just substantive decisions. A value of 100 means the number of outcome events matches the number of claims recorded in that period; below 100, fewer outcomes than claims were recorded, and above 100, more. This is a comparison of flows, not a measure of how quickly a particular claim was decided.
+
+The annual series fell to **32.7 outcomes per 100 claims in 2022**, then rose to **139.9 in 2023** and **157.7 in 2025**. The rolling year ending June 2026 recorded **134,484 outcomes against 85,891 claims**, or **156.6 per 100**. The three-year centred mean helps show the longer trend; the dashed substantive-only line is shown for context and is not the Home Office grant rate, whose denominator remains grants plus refusals.
+
+![Face-value productivity: annual all-outcome and substantive-only ratios, a three-year centred mean, and the year ending June 2026.](assets/face-value-productivity.svg){fig-alt="Lines show all recorded initial outcomes per 100 claims, a three-year centred mean, and substantive decisions only for calendar years 2010–2025; a separate diamond marks the rolling year ending June 2026. The dotted horizontal line marks 100 outcomes per 100 claims."}
+
+The second chart shows the difference in counts directly. In 2022 outcomes were **63,933 below claims**; in 2025 they were **58,819 above claims**. Across 2010–2025 the cumulative difference was **−46,892**. This cumulative balance is not an estimate of the current backlog: decisions in a year can relate to older claims, and the series does not account for every source of change to the stock. In particular, 2010 decisions may include legacy claims from before this series begins.
+
+![Annual decisions-minus-claims gaps and cumulative gap, calendar years 2010–2025.](assets/decisions-minus-claims.svg){fig-alt="Diverging bars show annual differences between recorded initial outcomes and claims received, while a line shows the cumulative difference since 2010. Negative bars indicate fewer outcomes than claims; positive bars indicate more."}
+
+These are people-based administrative flows, not linked claim cohorts, staff productivity or waiting-time measures. Administrative outcomes are recorded in the quarterly extract only from 2020, so earlier all-outcome totals have less complete coverage. Asylum Tracker’s separate **2025 UK FVP estimate of 116** uses UNHCR reporting data and a broader reporting basis; it is not directly comparable with this Home Office series. [Download the annual FVP series and flow gaps](data/derived/face-value-productivity.csv).
+
 Table `Asy_02a` separates the types of asylum-related grants. In the year ending June 2026 it records **42,394 asylum-related grants** and **3,840 resettlement arrivals**. Resettlement arrivals are plotted separately because they are not initial decisions; source blanks for temporary refugee permission are shown as zero only to render the chart, while remaining missing in the parsed data.
 
 ![Asylum-related grants by type and resettlement arrivals, calendar years 2010–2025.](assets/grant-types.svg){fig-alt="Stacked bars show six types of asylum-related grants from 2010 to 2025; a dashed line shows resettlement arrivals separately."}
@@ -292,6 +306,8 @@ This edition uses the Home Office **asylum summary tables, year ending June 2026
 
 The analysis parses 18 summary tables directly and validates the quarterly flow extracts against `Asy_00a` for calendar years 2010–2025, the year ending June 2026 and the latest pending stock. D03 main-applicant pending counts reconcile to the `Asy_00a` case total in June 2026; the June 2024 D03 and ASY_03 figures are shown side by side but remain separate source measures. `Asy_02e` quarterly event values reconcile to its published totals; its admission/removal comparisons are not person-level outcomes. The `ASY_02` initial-decision waiting bands sum to the published total and match `ASY_03` awaiting counts at June snapshots from 2017 through 2024. MoJ `FIA_4` financial-year quarters are mapped to calendar quarters; its tribunal caseload is shown as a separate indicator, not added to Home Office WIP. Support and hotel counts are reconciled for year-end 2022–2025 and June 2026; regional hotel counts also sum to the national totals. ASY_03 stage counts reconcile to the total WIP count; June 2024 has only the awaiting and aggregate post-decision split, and “On Hold” is excluded from the lower-bound count of cases beyond an initial decision. The ASY_03 work-in-progress series ends in June 2024. Cells marked `z`, `:`, `-`, or similar source suppression or non-applicability markers remain missing; they are never converted into zero. Calendar years, rolling years and quarters remain distinct. The 2011 claim total in `Asy_00a` differs by six from `Asy_01a`; the tables retain the source figures and are not forcibly reconciled across tables.
 
+The FVP series divides grants, refusals, withdrawals and administrative outcomes by claims in the same period, and reports outcomes per 100 claims. Its three-year mean is centred on each calendar year; the June 2026 point is a separate rolling-year ratio. The cumulative outcomes-minus-claims line covers calendar years 2010–2025 and is not a backlog estimate.
+
 Count axes use comma-separated values below 10,000 and `K` abbreviations at or above that scale; this convention is implemented in `COUNT_AXIS_K_THRESHOLD` in `scripts/analyze.py`. Chart legends sit below the plot area rather than over the data, with clear space beneath the axis labels.
 
 In the grant-type chart, missing source values for temporary refugee permission are represented as zero only for plotting; the parsed source data preserve them as missing. Resettlement arrivals are shown separately from initial decisions.
@@ -312,6 +328,7 @@ These files are derived from the pinned workbook above. The all-table CSV is a l
 - [Home Office asylum summary workbook (ODS)](data/raw/asylum-summary-jun-2026.ods)
 - [Source URL, retrieval time and SHA-256 (JSON)](data/raw/source.json)
 - [Quarterly claims, decisions, returns and pending stock (CSV)](data/derived/quarterly-flows.csv)
+- [Annual face-value productivity ratios and decisions-minus-claims gaps (CSV)](data/derived/face-value-productivity.csv)
 - [ASY_03 work-in-progress snapshots (CSV)](data/raw/asylum-work-in-progress.csv)
 - [ASY_03 work-in-progress stages and calculated shares (CSV)](data/derived/work-in-progress-stages.csv)
 - [Quarterly initial-decision, tribunal and WIP queue indicators (CSV)](data/derived/queue-indicators.csv)

@@ -51,6 +51,18 @@
     "total_grants_and_arrivals": 46234,
     "published_initial_decisions": 115872
   },
+  "face_value_productivity": {
+    "latest_period": "Year ending June 2026",
+    "latest_claims": 85891,
+    "latest_all_initial_outcomes": 134484,
+    "latest_fvp_all_per_100": 156.5751941414118,
+    "calendar_2022_fvp_all_per_100": 32.70706369004389,
+    "calendar_2025_fvp_all_per_100": 157.71604635417177,
+    "calendar_2025_fvp_substantive_per_100": 133.19465023402773,
+    "calendar_2022_decisions_minus_claims": -63933,
+    "calendar_2025_decisions_minus_claims": 58819,
+    "cumulative_decisions_minus_claims_2010_2025": -46892
+  },
   "children": {
     "children_decisions": 17529,
     "children_granted": 6518,
