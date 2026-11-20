@@ -10,6 +10,10 @@ The report explains the Asylum Tracker 2025 UK FVP of 116 by procedure: its UNHC
 
 Published report: <https://aloysius109.github.io/uk-asylum/>.
 
+## Medium edition
+
+The standalone article adaptation is in `medium-edition/article.html`, with five chart images in `medium-edition/images/`, numbered 01–05 to match Figures 1–5. From the repository root, run `python scripts/analyze.py --medium` to regenerate the report outputs and Medium images. Upload the images in article order and set the story’s canonical link to <https://aloysius109.github.io/uk-asylum/>.
+
 ## Source edition
 
 The source workbook is vendored at `data/raw/asylum-summary-jun-2026.ods`. `data/raw/source.json` records its Home Office URL, retrieval time and SHA-256. The analysis verifies that fingerprint and never downloads or replaces the accepted workbook during rendering.

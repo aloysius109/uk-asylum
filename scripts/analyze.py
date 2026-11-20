@@ -1,4 +1,5 @@
 """Parse the pinned Home Office asylum tables and build report datasets."""
+import argparse
 import hashlib
 import json
 import math
@@ -20,6 +21,19 @@ UNHCR_FVP_FILE = ROOT / "data" / "raw" / "unhcr-gbr-fvp-stages.csv"
 UNHCR_FVP_SHA256 = "41d6afcb6204295f3751162b766ae1e96e6a4cecb24b4cc0d91832dcd3f87210"
 ASSETS = ROOT / "assets"
 DERIVED = ROOT / "data" / "derived"
+MEDIUM_IMAGES = ROOT / "medium-edition" / "images"
+MEDIUM_CHARTS = (
+    "annual-claims-decisions",
+    "face-value-productivity",
+    "queue-shift",
+    "inadmissibility-totals",
+    "hotel-accommodation",
+)
+MEDIUM_FILES = {
+    chart: f"{number:02d}-{chart}.png"
+    for number, chart in enumerate(MEDIUM_CHARTS, start=1)
+}
+MEDIUM_EXPORT = False
 QUARTERLY_COLUMNS = [
     "quarter", "period_end", "claims", "grants", "refusals", "substantive_decisions",
     "withdrawals", "admin_outcomes", "enforced_returns", "voluntary_returns",
@@ -1255,6 +1269,9 @@ def save_chart(fig, name):
     ASSETS.mkdir(parents=True, exist_ok=True)
     path = ASSETS / f"{name}.svg"
     fig.savefig(path, bbox_inches="tight", facecolor="white")
+    if MEDIUM_EXPORT and name in MEDIUM_CHARTS:
+        MEDIUM_IMAGES.mkdir(parents=True, exist_ok=True)
+        fig.savefig(MEDIUM_IMAGES / MEDIUM_FILES[name], dpi=200, bbox_inches="tight", facecolor="white")
     plt.close(fig)
     svg = path.read_text(encoding="utf-8")
     path.write_text("\n".join(line.rstrip() for line in svg.splitlines()) + "\n", encoding="utf-8")
@@ -2217,6 +2234,13 @@ def write_outputs(metadata, tables, quarterly, work_in_progress, support, queue_
 
 
 def main():
+    global MEDIUM_EXPORT
+    parser = argparse.ArgumentParser(description="Build the UK asylum report assets.")
+    parser.add_argument("--medium", action="store_true", help="Also export chart images for the Medium edition.")
+    MEDIUM_EXPORT = parser.parse_args().medium
+    if MEDIUM_EXPORT and MEDIUM_IMAGES.exists():
+        for image in MEDIUM_IMAGES.glob("*.png"):
+            image.unlink()
     metadata, tables = load_tables()
     validate_tables(tables)
     quarterly, work_in_progress = load_quarterly_data()

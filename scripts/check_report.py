@@ -3,6 +3,9 @@ import re
 from pathlib import Path
 
 from analyze import (
+    MEDIUM_CHARTS,
+    MEDIUM_FILES,
+    MEDIUM_IMAGES,
     ROOT,
     load_quarterly_data,
     load_queue_indicators,
@@ -334,7 +337,23 @@ def main():
         require((ROOT / "assets" / chart).is_file(), f"Expected report chart is missing: {chart}")
         require(f"assets/{chart}" in report, f"Report does not reference its chart: {chart}")
 
-    print("Report QA passed: pinned figures, unit distinctions, twenty-nine charts and twenty downloads are consistent.")
+    medium_article_path = ROOT / "medium-edition" / "article.html"
+    require(medium_article_path.is_file(), "Medium article is missing.")
+    medium_article = medium_article_path.read_text(encoding="utf-8")
+    require('rel="canonical" href="https://aloysius109.github.io/uk-asylum/"' in medium_article,
+            "Medium article canonical link is missing or incorrect.")
+    medium_images = re.findall(r'<img\b[^>]*src="images/([^\"]+\.png)"', medium_article)
+    expected_medium_images = [MEDIUM_FILES[chart] for chart in MEDIUM_CHARTS]
+    require(medium_images == expected_medium_images,
+            "Medium article images are not numbered in figure order.")
+    for chart in MEDIUM_CHARTS:
+        image = MEDIUM_FILES[chart]
+        require((MEDIUM_IMAGES / image).is_file(), f"Medium chart image is missing: {image}")
+    actual_medium_images = sorted(path.name for path in MEDIUM_IMAGES.glob("*.png"))
+    require(actual_medium_images == sorted(expected_medium_images),
+            "Medium chart image directory contains missing or extra PNG files.")
+
+    print("Report QA passed: pinned figures, unit distinctions, twenty-nine charts, five Medium figures and twenty downloads are consistent.")
 
 
 if __name__ == "__main__":

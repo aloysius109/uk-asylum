@@ -1,0 +1,13 @@
+Medium edition publishing notes
+
+From the repository root, run `python scripts/analyze.py --medium` to regenerate the report assets and the five Medium PNGs.
+
+1. Copy the rendered text from article.html into a new Medium story; do not paste the HTML source as a code block.
+2. Upload the five images in medium-edition/images in article order: 01-annual-claims-decisions.png, 02-face-value-productivity.png, 03-queue-shift.png, 04-inadmissibility-totals.png, 05-hotel-accommodation.png.
+3. Keep each figure caption with its chart and set the matching descriptive alt text through Medium's image controls where available.
+4. Keep the link to the full report near the beginning; the website contains the complete analysis, methods and data downloads.
+5. Check headings, bold text, external links and the chart labels in Medium preview, especially on mobile.
+6. Set the canonical link to https://aloysius109.github.io/uk-asylum/ in story settings.
+7. Review the story before publishing. Creating this package does not publish or update anything on Medium or GitHub Pages.
+
+This is a standalone article adaptation with five static charts. Chart files are provided separately for upload.
